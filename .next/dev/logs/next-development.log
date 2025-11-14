@@ -1,0 +1,81 @@
+[00:00:06.074] Server  LOG      ✓ Ready in 4.5s
+[00:01:42.687] Server  LOG      ○ Compiling / ...
+[00:03:30.788] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:24.182] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:04:24.355] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{lazyData:null, ...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="page" pagePath="page.tsx">
+          <SegmentTrieNode>
+          <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+            <Home params={Promise} searchParams={Promise}>
+              <main className="min-h-dvh ...">
+                <div className="mx-auto ma...">
+                  <header>
+                  <Card>
+                  <Card className="p-4 space-y-4">
+                    <div data-slot="card" className="bg-card te...">
+                      <TaskFeed>
+                      <EssayBox value="hello world" onChange={function bound dispatchSetState}>
+                        <div className="space-y-2">
+                          <div className="flex items...">
+                            <span>
+                            <span>
+                              <strong className="tabular-nums">
++                               2
+-                               0
+                          ...
+        ...
+      ...
+
+[00:07:11.346] Browser INFO    %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+[00:07:11.346] Browser ERROR   uncaughtError: Error: Hydration failed because the server rendered text didn't match the client. As a result this tree will be regenerated on the client. This can happen if a SSR-ed Client Component used:
+
+- A server/client branch `if (typeof window !== 'undefined')`.
+- Variable input such as `Date.now()` or `Math.random()` which changes each time it's called.
+- Date formatting in a user's locale which doesn't match the server.
+- External changing data without sending a snapshot of it along with the HTML.
+- Invalid HTML tag nesting.
+
+It can also happen if the client has a browser extension installed which messes with the HTML before React loaded.
+
+https://react.dev/link/hydration-mismatch
+
+  ...
+    <RedirectErrorBoundary router={{...}}>
+      <InnerLayoutRouter url="/" tree={[...]} params={{}} cacheNode={{lazyData:null, ...}} segmentPath={[...]} ...>
+        <SegmentViewNode type="page" pagePath="page.tsx">
+          <SegmentTrieNode>
+          <ClientPageRoot Component={function Home} serverProvidedParams={{...}}>
+            <Home params={Promise} searchParams={Promise}>
+              <main className="min-h-dvh ...">
+                <div className="mx-auto ma...">
+                  <header>
+                  <Card>
+                  <Card className="p-4 space-y-4">
+                    <div data-slot="card" className="bg-card te...">
+                      <TaskFeed>
+                      <EssayBox value="hello world" onChange={function bound dispatchSetState}>
+                        <div className="space-y-2">
+                          <div className="flex items...">
+                            <span>
+                            <span>
+                              <strong className="tabular-nums">
++                               2
+-                               0
+                          ...
+        ...
+      ...
+

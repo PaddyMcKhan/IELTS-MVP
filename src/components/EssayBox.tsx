@@ -1,12 +1,16 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 
-export default function EssayBox() {
-  const [text, setText] = useState('');
+type Props = {
+  value: string;
+  onChange: (v: string) => void;
+};
+
+export default function EssayBox({ value, onChange }: Props) {
   const words = useMemo(
-    () => (text.trim() ? text.trim().split(/\s+/).length : 0),
-    [text]
+    () => (value.trim() ? value.trim().split(/\s+/).length : 0),
+    [value]
   );
 
   return (
@@ -17,8 +21,8 @@ export default function EssayBox() {
       </div>
       <Textarea
         className="min-h-[360px] text-base"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Type your response…"
       />
     </div>
