@@ -10,6 +10,7 @@ import EssayBox from '@/components/EssayBox';
 import TaskFeed from '@/components/TaskFeed';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { TASKS } from '@/data/tasks';
+import BandScoreModal from '@/components/BandScoreModal';
 
 // Helper: default exam duration based on IELTS task
 function defaultDurationForTask(task: 'task1' | 'task2'): number {
@@ -49,6 +50,9 @@ export default function Home() {
   // Word count derived from essay
   const currentWordCount = useMemo(() => countWords(essay), [essay]);
 
+  // Show/hide band score modal
+  const [showResults, setShowResults] = useState(false);
+
   // Warn if navigating away with text
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -76,8 +80,8 @@ export default function Home() {
       if (!proceed) return;
     }
 
-    // For now this is just a demo; later we’ll hook this into the scoring flow.
-    alert('Essay submitted (demo). In a future step, this will trigger band score analysis.');
+    // Instead of alert, open the band score preview modal
+    setShowResults(true);
   };
 
   return (
@@ -189,7 +193,7 @@ export default function Home() {
                 variant="default"
                 onClick={handleSubmit}
               >
-                Submit (UI only)
+                Submit (preview band)
               </Button>
             </div>
           </div>
@@ -212,7 +216,7 @@ export default function Home() {
           />
           {prompt && (
             <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-              <strong>Prompt:</strong> {prompt}
+              <strong>Question:</strong> {prompt}
             </div>
           )}
           <EssayBox
@@ -232,6 +236,15 @@ export default function Home() {
           </p>
         </Card>
       </div>
+
+      {showResults && (
+        <BandScoreModal
+          task={task}
+          wordCount={currentWordCount}
+          essay={essay}
+          onClose={() => setShowResults(false)}
+        />
+      )}
     </main>
   );
 }

@@ -19,7 +19,7 @@ export default function TaskFeed({ module, task, selectedId, onChange }: Props) 
 
   return (
     <div className="space-y-2">
-      <Label>Choose a {module} {task === 'task1' ? 'Task 1' : 'Task 2'} prompt</Label>
+      <Label>Choose a {module} {task === 'task1' ? 'Task 1' : 'Task 2'} Question</Label>
       <Select value={selectedId ?? ''} onValueChange={onChange}>
         <SelectTrigger><SelectValue placeholder="Select a practice question" /></SelectTrigger>
         <SelectContent>
