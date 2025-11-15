@@ -8,6 +8,7 @@ type BandScoreModalProps = {
   task: 'task1' | 'task2';
   wordCount: number;
   essay: string;
+  aiData: any;
   onClose: () => void;
 };
 
@@ -22,73 +23,14 @@ function roundToHalf(n: number): number {
   return Math.round(n * 2) / 2;
 }
 
-function commentFor(category: keyof Scores, band: number): string {
-  if (band < 5) {
-    switch (category) {
-      case 'taskResponse':
-        return 'Does not fully address the task; ideas are limited or unclear.';
-      case 'coherence':
-        return 'Ideas are hard to follow; linking and paragraphing are weak.';
-      case 'lexical':
-        return 'Limited range of vocabulary with noticeable repetition and errors.';
-      case 'grammar':
-        return 'Frequent grammatical errors that may cause confusion.';
-    }
-  } else if (band < 7) {
-    switch (category) {
-      case 'taskResponse':
-        return 'Addresses the task but may miss some key points or development.';
-      case 'coherence':
-        return 'Generally coherent with some issues in organisation or linking.';
-      case 'lexical':
-        return 'Adequate range of vocabulary with some inaccuracy or repetition.';
-      case 'grammar':
-        return 'A mix of simple and more complex sentences; errors are noticeable but rarely cause misunderstanding.';
-    }
-  } else {
-    switch (category) {
-      case 'taskResponse':
-        return 'Fully addresses all parts of the task with well-developed ideas.';
-      case 'coherence':
-        return 'Logically organised with clear progression and effective linking.';
-      case 'lexical':
-        return 'Wide range of vocabulary used naturally and accurately.';
-      case 'grammar':
-        return 'Flexible and accurate use of a range of grammar structures.';
-    }
-  }
-}
+export default function BandScoreModal({
+  task,
+  wordCount,
+  essay,
+  aiData,
+  onClose
+}: BandScoreModalProps) {
 
-// Very simple heuristic just to pre-fill sliders.
-// Later we will replace this with real AI scoring.
-function computeInitialScores(task: 'task1' | 'task2', wordCount: number, essay: string): Scores {
-  const minWords = task === 'task1' ? 150 : 250;
-  const ratio = minWords > 0 ? wordCount / minWords : 0;
-
-  let taskResponse: number;
-  if (ratio < 0.5) taskResponse = 4;
-  else if (ratio < 0.8) taskResponse = 5;
-  else if (ratio < 1.0) taskResponse = 6;
-  else if (ratio < 1.3) taskResponse = 7;
-  else taskResponse = 8;
-
-  // Very basic proxies for the other bands (placeholder)
-  const lengthBonus = Math.min(1, Math.max(0, (wordCount - minWords) / minWords));
-  const baseBand = 6 + lengthBonus; // 6.0–7.0
-
-  const coherence = baseBand;
-  const lexical = baseBand;
-  const grammar = baseBand;
-
-  return {
-    taskResponse,
-    coherence,
-    lexical,
-    grammar,
-  };
-}
-
-export default function BandScoreModal({ task, wordCount, essay, onClose }: BandScoreModalProps) {
   const [scores, setScores] = useState<Scores>({
     taskResponse: 6,
     coherence: 6,
@@ -96,11 +38,16 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
     grammar: 6,
   });
 
-  // Initialise scores when modal opens / essay changes
   useEffect(() => {
-    const initial = computeInitialScores(task, wordCount, essay);
-    setScores(initial);
-  }, [task, wordCount, essay]);
+    if (aiData) {
+      setScores({
+        taskResponse: aiData.taskResponse,
+        coherence: aiData.coherence,
+        lexical: aiData.lexical,
+        grammar: aiData.grammar
+      });
+    }
+  }, [aiData]);
 
   const overall = roundToHalf(
     (scores.taskResponse + scores.coherence + scores.lexical + scores.grammar) / 4
@@ -108,9 +55,8 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
 
   const minWords = task === 'task1' ? 150 : 250;
 
-  const handleSliderChange = (field: keyof Scores, value: string) => {
-    const num = parseFloat(value);
-    setScores((prev) => ({ ...prev, [field]: num }));
+  const handleSlider = (field: keyof Scores, value: string) => {
+    setScores((prev) => ({ ...prev, [field]: parseFloat(value) }));
   };
 
   return (
@@ -122,33 +68,30 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
         className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
+
+        {/* HEADER */}
         <div className="mb-4 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold">Band Score Preview</h2>
             <p className="text-xs text-slate-500">
-              This is a practice-only estimate. Official IELTS scores may differ.
+              AI examiner scoring — practice estimate only.
             </p>
           </div>
-          <Button variant="outline" size="icon" onClick={onClose} aria-label="Close">
-            ✕
-          </Button>
+          <Button variant="outline" size="icon" onClick={onClose}>✕</Button>
         </div>
 
         <div className="mb-4 flex items-center justify-between text-sm text-slate-600">
-          <span>
-            Task: <strong>{task === 'task1' ? 'Task 1' : 'Task 2'}</strong>
-          </span>
-          <span>
-            Words: <strong>{wordCount}</strong> (recommended minimum {minWords})
-          </span>
+          <span><strong>Task:</strong> {task === 'task1' ? 'Task 1' : 'Task 2'}</span>
+          <span><strong>Words:</strong> {wordCount} (min {minWords})</span>
         </div>
 
+        {/* OVERALL BAND */}
         <div className="mb-6 rounded-md bg-slate-50 p-4">
           <p className="text-xs uppercase text-slate-500">Estimated Overall Band</p>
           <div className="mt-1 flex items-baseline gap-3">
             <span className="text-4xl font-bold">{overall.toFixed(1)}</span>
             <span className="text-sm text-slate-600">
-              Average of the four IELTS Writing criteria
+              (adjust sliders below)
             </span>
           </div>
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200">
@@ -159,45 +102,43 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
           </div>
         </div>
 
+        {/* SLIDERS */}
         <div className="space-y-4 text-sm">
+
           {/* Task Response */}
           <div>
             <div className="flex items-center justify-between">
               <Label>Task Response</Label>
               <span className="text-xs text-slate-500">Band {scores.taskResponse.toFixed(1)}</span>
             </div>
+
             <input
               type="range"
-              min={0}
-              max={9}
-              step={0.5}
+              min={0} max={9} step={0.5}
               value={scores.taskResponse}
-              onChange={(e) => handleSliderChange('taskResponse', e.target.value)}
+              onChange={(e) => handleSlider("taskResponse", e.target.value)}
               className="mt-2 w-full"
             />
-            <p className="mt-1 text-xs text-slate-600">
-              {commentFor('taskResponse', scores.taskResponse)}
-            </p>
+
+            <p className="mt-1 text-xs text-slate-600">{aiData.comments.taskResponse}</p>
           </div>
 
-          {/* Coherence & Cohesion */}
+          {/* Coherence */}
           <div>
             <div className="flex items-center justify-between">
               <Label>Coherence & Cohesion</Label>
               <span className="text-xs text-slate-500">Band {scores.coherence.toFixed(1)}</span>
             </div>
+
             <input
               type="range"
-              min={0}
-              max={9}
-              step={0.5}
+              min={0} max={9} step={0.5}
               value={scores.coherence}
-              onChange={(e) => handleSliderChange('coherence', e.target.value)}
+              onChange={(e) => handleSlider("coherence", e.target.value)}
               className="mt-2 w-full"
             />
-            <p className="mt-1 text-xs text-slate-600">
-              {commentFor('coherence', scores.coherence)}
-            </p>
+
+            <p className="mt-1 text-xs text-slate-600">{aiData.comments.coherence}</p>
           </div>
 
           {/* Lexical Resource */}
@@ -206,18 +147,16 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
               <Label>Lexical Resource</Label>
               <span className="text-xs text-slate-500">Band {scores.lexical.toFixed(1)}</span>
             </div>
+
             <input
               type="range"
-              min={0}
-              max={9}
-              step={0.5}
+              min={0} max={9} step={0.5}
               value={scores.lexical}
-              onChange={(e) => handleSliderChange('lexical', e.target.value)}
+              onChange={(e) => handleSlider("lexical", e.target.value)}
               className="mt-2 w-full"
             />
-            <p className="mt-1 text-xs text-slate-600">
-              {commentFor('lexical', scores.lexical)}
-            </p>
+
+            <p className="mt-1 text-xs text-slate-600">{aiData.comments.lexical}</p>
           </div>
 
           {/* Grammar */}
@@ -226,25 +165,35 @@ export default function BandScoreModal({ task, wordCount, essay, onClose }: Band
               <Label>Grammatical Range & Accuracy</Label>
               <span className="text-xs text-slate-500">Band {scores.grammar.toFixed(1)}</span>
             </div>
+
             <input
               type="range"
-              min={0}
-              max={9}
-              step={0.5}
+              min={0} max={9} step={0.5}
               value={scores.grammar}
-              onChange={(e) => handleSliderChange('grammar', e.target.value)}
+              onChange={(e) => handleSlider("grammar", e.target.value)}
               className="mt-2 w-full"
             />
-            <p className="mt-1 text-xs text-slate-600">
-              {commentFor('grammar', scores.grammar)}
-            </p>
+
+            <p className="mt-1 text-xs text-slate-600">{aiData.comments.grammar}</p>
+          </div>
+
+        </div>
+
+        {/* AI COMMENTS */}
+        <div className="mt-6 space-y-4 text-sm">
+          <h3 className="text-sm font-semibold">AI Examiner Comments</h3>
+
+          <div className="rounded-md bg-slate-50 p-3">
+            <p><strong>Overview:</strong> {aiData.comments.overview}</p>
+          </div>
+
+          <div className="rounded-md bg-slate-50 p-3">
+            <p><strong>Advice to Improve:</strong> {aiData.comments.advice}</p>
           </div>
         </div>
 
-        <div className="mt-6 flex items-center justify-end gap-2">
-          <Button variant="outline" onClick={onClose}>
-            Close
-          </Button>
+        <div className="mt-6 text-right">
+          <Button onClick={onClose}>Close</Button>
         </div>
       </div>
     </div>
