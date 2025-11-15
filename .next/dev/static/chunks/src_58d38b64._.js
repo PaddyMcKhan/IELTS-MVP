@@ -1881,76 +1881,16 @@ var _s = __turbopack_context__.k.signature();
 function roundToHalf(n) {
     return Math.round(n * 2) / 2;
 }
-function commentFor(category, band) {
-    if (band < 5) {
-        switch(category){
-            case 'taskResponse':
-                return 'Does not fully address the task; ideas are limited or unclear.';
-            case 'coherence':
-                return 'Ideas are hard to follow; linking and paragraphing are weak.';
-            case 'lexical':
-                return 'Limited range of vocabulary with noticeable repetition and errors.';
-            case 'grammar':
-                return 'Frequent grammatical errors that may cause confusion.';
-        }
-    } else if (band < 7) {
-        switch(category){
-            case 'taskResponse':
-                return 'Addresses the task but may miss some key points or development.';
-            case 'coherence':
-                return 'Generally coherent with some issues in organisation or linking.';
-            case 'lexical':
-                return 'Adequate range of vocabulary with some inaccuracy or repetition.';
-            case 'grammar':
-                return 'A mix of simple and more complex sentences; errors are noticeable but rarely cause misunderstanding.';
-        }
-    } else {
-        switch(category){
-            case 'taskResponse':
-                return 'Fully addresses all parts of the task with well-developed ideas.';
-            case 'coherence':
-                return 'Logically organised with clear progression and effective linking.';
-            case 'lexical':
-                return 'Wide range of vocabulary used naturally and accurately.';
-            case 'grammar':
-                return 'Flexible and accurate use of a range of grammar structures.';
-        }
-    }
-}
-// Very simple heuristic just to pre-fill sliders.
-// Later we will replace this with real AI scoring.
-function computeInitialScores(task, wordCount, essay) {
-    const minWords = task === 'task1' ? 150 : 250;
-    const ratio = minWords > 0 ? wordCount / minWords : 0;
-    let taskResponse;
-    if (ratio < 0.5) taskResponse = 4;
-    else if (ratio < 0.8) taskResponse = 5;
-    else if (ratio < 1.0) taskResponse = 6;
-    else if (ratio < 1.3) taskResponse = 7;
-    else taskResponse = 8;
-    // Very basic proxies for the other bands (placeholder)
-    const lengthBonus = Math.min(1, Math.max(0, (wordCount - minWords) / minWords));
-    const baseBand = 6 + lengthBonus; // 6.0–7.0
-    const coherence = baseBand;
-    const lexical = baseBand;
-    const grammar = baseBand;
-    return {
-        taskResponse,
-        coherence,
-        lexical,
-        grammar
-    };
-}
 function BandScoreModal(t0) {
     _s();
-    const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(147);
-    if ($[0] !== "7e3867872ac489d679ff79fe497b75769a007b8f5a239cba7c571e208d83d774") {
-        for(let $i = 0; $i < 147; $i += 1){
+    const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(148);
+    if ($[0] !== "be564cd9efce8cb5b674e85944a270010d5c8282dfcd8971743d6c564390865e") {
+        for(let $i = 0; $i < 148; $i += 1){
             $[$i] = Symbol.for("react.memo_cache_sentinel");
         }
-        $[0] = "7e3867872ac489d679ff79fe497b75769a007b8f5a239cba7c571e208d83d774";
+        $[0] = "be564cd9efce8cb5b674e85944a270010d5c8282dfcd8971743d6c564390865e";
     }
-    const { task, wordCount, essay, onClose } = t0;
+    const { task, wordCount, aiData, onClose } = t0;
     let t1;
     if ($[1] === Symbol.for("react.memo_cache_sentinel")) {
         t1 = {
@@ -1966,29 +1906,31 @@ function BandScoreModal(t0) {
     const [scores, setScores] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(t1);
     let t2;
     let t3;
-    if ($[2] !== essay || $[3] !== task || $[4] !== wordCount) {
+    if ($[2] !== aiData) {
         t2 = ({
             "BandScoreModal[useEffect()]": ()=>{
-                const initial = computeInitialScores(task, wordCount, essay);
-                setScores(initial);
+                if (aiData) {
+                    setScores({
+                        taskResponse: aiData.taskResponse,
+                        coherence: aiData.coherence,
+                        lexical: aiData.lexical,
+                        grammar: aiData.grammar
+                    });
+                }
             }
         })["BandScoreModal[useEffect()]"];
         t3 = [
-            task,
-            wordCount,
-            essay
+            aiData
         ];
-        $[2] = essay;
-        $[3] = task;
-        $[4] = wordCount;
-        $[5] = t2;
-        $[6] = t3;
+        $[2] = aiData;
+        $[3] = t2;
+        $[4] = t3;
     } else {
-        t2 = $[5];
-        t3 = $[6];
+        t2 = $[3];
+        t3 = $[4];
     }
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])(t2, t3);
-    let handleSliderChange;
+    let handleSlider;
     let overall;
     let t10;
     let t11;
@@ -2001,33 +1943,32 @@ function BandScoreModal(t0) {
     let t7;
     let t8;
     let t9;
-    if ($[7] !== onClose || $[8] !== scores.coherence || $[9] !== scores.grammar || $[10] !== scores.lexical || $[11] !== scores.taskResponse || $[12] !== task || $[13] !== wordCount) {
+    if ($[5] !== onClose || $[6] !== scores.coherence || $[7] !== scores.grammar || $[8] !== scores.lexical || $[9] !== scores.taskResponse || $[10] !== task || $[11] !== wordCount) {
         overall = roundToHalf((scores.taskResponse + scores.coherence + scores.lexical + scores.grammar) / 4);
         const minWords = task === "task1" ? 150 : 250;
         let t15;
-        if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
+        if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
             t15 = ({
-                "BandScoreModal[handleSliderChange]": (field, value)=>{
-                    const num = parseFloat(value);
+                "BandScoreModal[handleSlider]": (field, value)=>{
                     setScores({
-                        "BandScoreModal[handleSliderChange > setScores()]": (prev)=>({
+                        "BandScoreModal[handleSlider > setScores()]": (prev)=>({
                                 ...prev,
-                                [field]: num
+                                [field]: parseFloat(value)
                             })
-                    }["BandScoreModal[handleSliderChange > setScores()]"]);
+                    }["BandScoreModal[handleSlider > setScores()]"]);
                 }
-            })["BandScoreModal[handleSliderChange]"];
-            $[27] = t15;
+            })["BandScoreModal[handleSlider]"];
+            $[25] = t15;
         } else {
-            t15 = $[27];
+            t15 = $[25];
         }
-        handleSliderChange = t15;
+        handleSlider = t15;
         t13 = "fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4";
         t14 = onClose;
         t9 = "w-full max-w-lg rounded-xl bg-white p-6 shadow-xl";
         t10 = _BandScoreModalDivOnClick;
         let t16;
-        if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
+        if ($[26] === Symbol.for("react.memo_cache_sentinel")) {
             t16 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 children: [
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
@@ -2035,28 +1976,28 @@ function BandScoreModal(t0) {
                         children: "Band Score Preview"
                     }, void 0, false, {
                         fileName: "[project]/src/components/BandScoreModal.tsx",
-                        lineNumber: 168,
+                        lineNumber: 113,
                         columnNumber: 18
                     }, this),
                     /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                         className: "text-xs text-slate-500",
-                        children: "This is a practice-only estimate. Official IELTS scores may differ."
+                        children: "AI examiner scoring — practice estimate only."
                     }, void 0, false, {
                         fileName: "[project]/src/components/BandScoreModal.tsx",
-                        lineNumber: 168,
+                        lineNumber: 113,
                         columnNumber: 79
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 168,
+                lineNumber: 113,
                 columnNumber: 13
             }, this);
-            $[28] = t16;
+            $[26] = t16;
         } else {
-            t16 = $[28];
+            t16 = $[26];
         }
-        if ($[29] !== onClose) {
+        if ($[27] !== onClose) {
             t11 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "mb-4 flex items-center justify-between",
                 children: [
@@ -2065,185 +2006,192 @@ function BandScoreModal(t0) {
                         variant: "outline",
                         size: "icon",
                         onClick: onClose,
-                        "aria-label": "Close",
                         children: "✕"
                     }, void 0, false, {
                         fileName: "[project]/src/components/BandScoreModal.tsx",
-                        lineNumber: 174,
+                        lineNumber: 119,
                         columnNumber: 74
                     }, this)
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 174,
+                lineNumber: 119,
                 columnNumber: 13
             }, this);
-            $[29] = onClose;
-            $[30] = t11;
+            $[27] = onClose;
+            $[28] = t11;
         } else {
-            t11 = $[30];
+            t11 = $[28];
         }
-        const t17 = task === "task1" ? "Task 1" : "Task 2";
-        let t18;
-        if ($[31] !== t17) {
-            t18 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        let t17;
+        if ($[29] === Symbol.for("react.memo_cache_sentinel")) {
+            t17 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                children: "Task:"
+            }, void 0, false, {
+                fileName: "[project]/src/components/BandScoreModal.tsx",
+                lineNumber: 127,
+                columnNumber: 13
+            }, this);
+            $[29] = t17;
+        } else {
+            t17 = $[29];
+        }
+        const t18 = task === "task1" ? "Task 1" : "Task 2";
+        let t19;
+        if ($[30] !== t18) {
+            t19 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 children: [
-                    "Task: ",
-                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
-                        children: t17
-                    }, void 0, false, {
-                        fileName: "[project]/src/components/BandScoreModal.tsx",
-                        lineNumber: 183,
-                        columnNumber: 25
-                    }, this)
+                    t17,
+                    " ",
+                    t18
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 183,
+                lineNumber: 135,
                 columnNumber: 13
             }, this);
-            $[31] = t17;
-            $[32] = t18;
+            $[30] = t18;
+            $[31] = t19;
         } else {
-            t18 = $[32];
-        }
-        let t19;
-        if ($[33] !== wordCount) {
-            t19 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
-                children: wordCount
-            }, void 0, false, {
-                fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 191,
-                columnNumber: 13
-            }, this);
-            $[33] = wordCount;
-            $[34] = t19;
-        } else {
-            t19 = $[34];
+            t19 = $[31];
         }
         let t20;
-        if ($[35] !== minWords || $[36] !== t19) {
-            t20 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
+        if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
+            t20 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+                children: "Words:"
+            }, void 0, false, {
+                fileName: "[project]/src/components/BandScoreModal.tsx",
+                lineNumber: 143,
+                columnNumber: 13
+            }, this);
+            $[32] = t20;
+        } else {
+            t20 = $[32];
+        }
+        let t21;
+        if ($[33] !== minWords || $[34] !== wordCount) {
+            t21 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                 children: [
-                    "Words: ",
-                    t19,
-                    " (recommended minimum ",
+                    t20,
+                    " ",
+                    wordCount,
+                    " (min ",
                     minWords,
                     ")"
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 199,
+                lineNumber: 150,
                 columnNumber: 13
             }, this);
-            $[35] = minWords;
-            $[36] = t19;
-            $[37] = t20;
+            $[33] = minWords;
+            $[34] = wordCount;
+            $[35] = t21;
         } else {
-            t20 = $[37];
+            t21 = $[35];
         }
-        if ($[38] !== t18 || $[39] !== t20) {
+        if ($[36] !== t19 || $[37] !== t21) {
             t12 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                 className: "mb-4 flex items-center justify-between text-sm text-slate-600",
                 children: [
-                    t18,
-                    t20
+                    t19,
+                    t21
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 207,
+                lineNumber: 158,
                 columnNumber: 13
             }, this);
-            $[38] = t18;
-            $[39] = t20;
-            $[40] = t12;
+            $[36] = t19;
+            $[37] = t21;
+            $[38] = t12;
         } else {
-            t12 = $[40];
+            t12 = $[38];
         }
         t7 = "mb-6 rounded-md bg-slate-50 p-4";
-        if ($[41] === Symbol.for("react.memo_cache_sentinel")) {
+        if ($[39] === Symbol.for("react.memo_cache_sentinel")) {
             t8 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                 className: "text-xs uppercase text-slate-500",
                 children: "Estimated Overall Band"
             }, void 0, false, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 216,
+                lineNumber: 167,
                 columnNumber: 12
             }, this);
-            $[41] = t8;
+            $[39] = t8;
         } else {
-            t8 = $[41];
+            t8 = $[39];
         }
         t6 = "mt-1 flex items-baseline gap-3";
         t4 = "text-4xl font-bold";
         t5 = overall.toFixed(1);
-        $[7] = onClose;
-        $[8] = scores.coherence;
-        $[9] = scores.grammar;
-        $[10] = scores.lexical;
-        $[11] = scores.taskResponse;
-        $[12] = task;
-        $[13] = wordCount;
-        $[14] = handleSliderChange;
-        $[15] = overall;
-        $[16] = t10;
-        $[17] = t11;
-        $[18] = t12;
-        $[19] = t13;
-        $[20] = t14;
-        $[21] = t4;
-        $[22] = t5;
-        $[23] = t6;
-        $[24] = t7;
-        $[25] = t8;
-        $[26] = t9;
+        $[5] = onClose;
+        $[6] = scores.coherence;
+        $[7] = scores.grammar;
+        $[8] = scores.lexical;
+        $[9] = scores.taskResponse;
+        $[10] = task;
+        $[11] = wordCount;
+        $[12] = handleSlider;
+        $[13] = overall;
+        $[14] = t10;
+        $[15] = t11;
+        $[16] = t12;
+        $[17] = t13;
+        $[18] = t14;
+        $[19] = t4;
+        $[20] = t5;
+        $[21] = t6;
+        $[22] = t7;
+        $[23] = t8;
+        $[24] = t9;
     } else {
-        handleSliderChange = $[14];
-        overall = $[15];
-        t10 = $[16];
-        t11 = $[17];
-        t12 = $[18];
-        t13 = $[19];
-        t14 = $[20];
-        t4 = $[21];
-        t5 = $[22];
-        t6 = $[23];
-        t7 = $[24];
-        t8 = $[25];
-        t9 = $[26];
+        handleSlider = $[12];
+        overall = $[13];
+        t10 = $[14];
+        t11 = $[15];
+        t12 = $[16];
+        t13 = $[17];
+        t14 = $[18];
+        t4 = $[19];
+        t5 = $[20];
+        t6 = $[21];
+        t7 = $[22];
+        t8 = $[23];
+        t9 = $[24];
     }
     let t15;
-    if ($[42] !== t4 || $[43] !== t5) {
+    if ($[40] !== t4 || $[41] !== t5) {
         t15 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
             className: t4,
             children: t5
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 261,
+            lineNumber: 212,
             columnNumber: 11
         }, this);
-        $[42] = t4;
-        $[43] = t5;
-        $[44] = t15;
+        $[40] = t4;
+        $[41] = t5;
+        $[42] = t15;
     } else {
-        t15 = $[44];
+        t15 = $[42];
     }
     let t16;
-    if ($[45] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[43] === Symbol.for("react.memo_cache_sentinel")) {
         t16 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
             className: "text-sm text-slate-600",
-            children: "Average of the four IELTS Writing criteria"
+            children: "(adjust sliders below)"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 270,
+            lineNumber: 221,
             columnNumber: 11
         }, this);
-        $[45] = t16;
+        $[43] = t16;
     } else {
-        t16 = $[45];
+        t16 = $[43];
     }
     let t17;
-    if ($[46] !== t15 || $[47] !== t6) {
+    if ($[44] !== t15 || $[45] !== t6) {
         t17 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: t6,
             children: [
@@ -2252,18 +2200,18 @@ function BandScoreModal(t0) {
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 277,
+            lineNumber: 228,
             columnNumber: 11
         }, this);
-        $[46] = t15;
-        $[47] = t6;
-        $[48] = t17;
+        $[44] = t15;
+        $[45] = t6;
+        $[46] = t17;
     } else {
-        t17 = $[48];
+        t17 = $[46];
     }
     const t18 = `${overall / 9 * 100}%`;
     let t19;
-    if ($[49] !== t18) {
+    if ($[47] !== t18) {
         t19 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "mt-3 h-2 w-full overflow-hidden rounded-full bg-slate-200",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -2273,21 +2221,21 @@ function BandScoreModal(t0) {
                 }
             }, void 0, false, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 287,
+                lineNumber: 238,
                 columnNumber: 86
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 287,
+            lineNumber: 238,
             columnNumber: 11
         }, this);
-        $[49] = t18;
-        $[50] = t19;
+        $[47] = t18;
+        $[48] = t19;
     } else {
-        t19 = $[50];
+        t19 = $[48];
     }
     let t20;
-    if ($[51] !== t17 || $[52] !== t19 || $[53] !== t7 || $[54] !== t8) {
+    if ($[49] !== t17 || $[50] !== t19 || $[51] !== t7 || $[52] !== t8) {
         t20 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: t7,
             children: [
@@ -2297,40 +2245,40 @@ function BandScoreModal(t0) {
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 297,
+            lineNumber: 248,
             columnNumber: 11
         }, this);
-        $[51] = t17;
-        $[52] = t19;
-        $[53] = t7;
-        $[54] = t8;
-        $[55] = t20;
+        $[49] = t17;
+        $[50] = t19;
+        $[51] = t7;
+        $[52] = t8;
+        $[53] = t20;
     } else {
-        t20 = $[55];
+        t20 = $[53];
     }
     let t21;
-    if ($[56] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[54] === Symbol.for("react.memo_cache_sentinel")) {
         t21 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Task Response"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 308,
+            lineNumber: 259,
             columnNumber: 11
         }, this);
-        $[56] = t21;
+        $[54] = t21;
     } else {
-        t21 = $[56];
+        t21 = $[54];
     }
     let t22;
-    if ($[57] !== scores.taskResponse) {
+    if ($[55] !== scores.taskResponse) {
         t22 = scores.taskResponse.toFixed(1);
-        $[57] = scores.taskResponse;
-        $[58] = t22;
+        $[55] = scores.taskResponse;
+        $[56] = t22;
     } else {
-        t22 = $[58];
+        t22 = $[56];
     }
     let t23;
-    if ($[59] !== t22) {
+    if ($[57] !== t22) {
         t23 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex items-center justify-between",
             children: [
@@ -2343,32 +2291,32 @@ function BandScoreModal(t0) {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/BandScoreModal.tsx",
-                    lineNumber: 323,
+                    lineNumber: 274,
                     columnNumber: 67
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 323,
+            lineNumber: 274,
             columnNumber: 11
         }, this);
-        $[59] = t22;
-        $[60] = t23;
+        $[57] = t22;
+        $[58] = t23;
     } else {
-        t23 = $[60];
+        t23 = $[58];
     }
     let t24;
-    if ($[61] !== handleSliderChange) {
+    if ($[59] !== handleSlider) {
         t24 = ({
-            "BandScoreModal[<input>.onChange]": (e_0)=>handleSliderChange("taskResponse", e_0.target.value)
+            "BandScoreModal[<input>.onChange]": (e_0)=>handleSlider("taskResponse", e_0.target.value)
         })["BandScoreModal[<input>.onChange]"];
-        $[61] = handleSliderChange;
-        $[62] = t24;
+        $[59] = handleSlider;
+        $[60] = t24;
     } else {
-        t24 = $[62];
+        t24 = $[60];
     }
     let t25;
-    if ($[63] !== scores.taskResponse || $[64] !== t24) {
+    if ($[61] !== scores.taskResponse || $[62] !== t24) {
         t25 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
             type: "range",
             min: 0,
@@ -2379,520 +2327,599 @@ function BandScoreModal(t0) {
             className: "mt-2 w-full"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 341,
+            lineNumber: 292,
             columnNumber: 11
         }, this);
-        $[63] = scores.taskResponse;
-        $[64] = t24;
-        $[65] = t25;
+        $[61] = scores.taskResponse;
+        $[62] = t24;
+        $[63] = t25;
     } else {
-        t25 = $[65];
+        t25 = $[63];
     }
     let t26;
-    if ($[66] !== scores.taskResponse) {
-        t26 = commentFor("taskResponse", scores.taskResponse);
-        $[66] = scores.taskResponse;
-        $[67] = t26;
-    } else {
-        t26 = $[67];
-    }
-    let t27;
-    if ($[68] !== t26) {
-        t27 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+    if ($[64] !== aiData.comments.taskResponse) {
+        t26 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
             className: "mt-1 text-xs text-slate-600",
-            children: t26
+            children: aiData.comments.taskResponse
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 358,
+            lineNumber: 301,
             columnNumber: 11
         }, this);
+        $[64] = aiData.comments.taskResponse;
+        $[65] = t26;
+    } else {
+        t26 = $[65];
+    }
+    let t27;
+    if ($[66] !== t23 || $[67] !== t25 || $[68] !== t26) {
+        t27 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            children: [
+                t23,
+                t25,
+                t26
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 309,
+            columnNumber: 11
+        }, this);
+        $[66] = t23;
+        $[67] = t25;
         $[68] = t26;
         $[69] = t27;
     } else {
         t27 = $[69];
     }
     let t28;
-    if ($[70] !== t23 || $[71] !== t25 || $[72] !== t27) {
-        t28 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            children: [
-                t23,
-                t25,
-                t27
-            ]
-        }, void 0, true, {
-            fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 366,
-            columnNumber: 11
-        }, this);
-        $[70] = t23;
-        $[71] = t25;
-        $[72] = t27;
-        $[73] = t28;
-    } else {
-        t28 = $[73];
-    }
-    let t29;
-    if ($[74] === Symbol.for("react.memo_cache_sentinel")) {
-        t29 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
+    if ($[70] === Symbol.for("react.memo_cache_sentinel")) {
+        t28 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Coherence & Cohesion"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 376,
+            lineNumber: 319,
             columnNumber: 11
         }, this);
-        $[74] = t29;
+        $[70] = t28;
     } else {
-        t29 = $[74];
+        t28 = $[70];
+    }
+    let t29;
+    if ($[71] !== scores.coherence) {
+        t29 = scores.coherence.toFixed(1);
+        $[71] = scores.coherence;
+        $[72] = t29;
+    } else {
+        t29 = $[72];
     }
     let t30;
-    if ($[75] !== scores.coherence) {
-        t30 = scores.coherence.toFixed(1);
-        $[75] = scores.coherence;
-        $[76] = t30;
-    } else {
-        t30 = $[76];
-    }
-    let t31;
-    if ($[77] !== t30) {
-        t31 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    if ($[73] !== t29) {
+        t30 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex items-center justify-between",
             children: [
-                t29,
+                t28,
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                     className: "text-xs text-slate-500",
                     children: [
                         "Band ",
-                        t30
+                        t29
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/BandScoreModal.tsx",
-                    lineNumber: 391,
+                    lineNumber: 334,
                     columnNumber: 67
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 391,
+            lineNumber: 334,
             columnNumber: 11
         }, this);
-        $[77] = t30;
-        $[78] = t31;
+        $[73] = t29;
+        $[74] = t30;
     } else {
-        t31 = $[78];
+        t30 = $[74];
+    }
+    let t31;
+    if ($[75] !== handleSlider) {
+        t31 = ({
+            "BandScoreModal[<input>.onChange]": (e_1)=>handleSlider("coherence", e_1.target.value)
+        })["BandScoreModal[<input>.onChange]"];
+        $[75] = handleSlider;
+        $[76] = t31;
+    } else {
+        t31 = $[76];
     }
     let t32;
-    if ($[79] !== handleSliderChange) {
-        t32 = ({
-            "BandScoreModal[<input>.onChange]": (e_1)=>handleSliderChange("coherence", e_1.target.value)
-        })["BandScoreModal[<input>.onChange]"];
-        $[79] = handleSliderChange;
-        $[80] = t32;
-    } else {
-        t32 = $[80];
-    }
-    let t33;
-    if ($[81] !== scores.coherence || $[82] !== t32) {
-        t33 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+    if ($[77] !== scores.coherence || $[78] !== t31) {
+        t32 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
             type: "range",
             min: 0,
             max: 9,
             step: 0.5,
             value: scores.coherence,
-            onChange: t32,
+            onChange: t31,
             className: "mt-2 w-full"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 409,
+            lineNumber: 352,
             columnNumber: 11
         }, this);
-        $[81] = scores.coherence;
-        $[82] = t32;
-        $[83] = t33;
+        $[77] = scores.coherence;
+        $[78] = t31;
+        $[79] = t32;
     } else {
-        t33 = $[83];
+        t32 = $[79];
+    }
+    let t33;
+    if ($[80] !== aiData.comments.coherence) {
+        t33 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+            className: "mt-1 text-xs text-slate-600",
+            children: aiData.comments.coherence
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 361,
+            columnNumber: 11
+        }, this);
+        $[80] = aiData.comments.coherence;
+        $[81] = t33;
+    } else {
+        t33 = $[81];
     }
     let t34;
-    if ($[84] !== scores.coherence) {
-        t34 = commentFor("coherence", scores.coherence);
-        $[84] = scores.coherence;
+    if ($[82] !== t30 || $[83] !== t32 || $[84] !== t33) {
+        t34 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            children: [
+                t30,
+                t32,
+                t33
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 369,
+            columnNumber: 11
+        }, this);
+        $[82] = t30;
+        $[83] = t32;
+        $[84] = t33;
         $[85] = t34;
     } else {
         t34 = $[85];
     }
     let t35;
-    if ($[86] !== t34) {
-        t35 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-            className: "mt-1 text-xs text-slate-600",
-            children: t34
-        }, void 0, false, {
-            fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 426,
-            columnNumber: 11
-        }, this);
-        $[86] = t34;
-        $[87] = t35;
-    } else {
-        t35 = $[87];
-    }
-    let t36;
-    if ($[88] !== t31 || $[89] !== t33 || $[90] !== t35) {
-        t36 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            children: [
-                t31,
-                t33,
-                t35
-            ]
-        }, void 0, true, {
-            fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 434,
-            columnNumber: 11
-        }, this);
-        $[88] = t31;
-        $[89] = t33;
-        $[90] = t35;
-        $[91] = t36;
-    } else {
-        t36 = $[91];
-    }
-    let t37;
-    if ($[92] === Symbol.for("react.memo_cache_sentinel")) {
-        t37 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
+    if ($[86] === Symbol.for("react.memo_cache_sentinel")) {
+        t35 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Lexical Resource"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 444,
+            lineNumber: 379,
             columnNumber: 11
         }, this);
-        $[92] = t37;
+        $[86] = t35;
     } else {
-        t37 = $[92];
+        t35 = $[86];
     }
-    let t38;
-    if ($[93] !== scores.lexical) {
-        t38 = scores.lexical.toFixed(1);
-        $[93] = scores.lexical;
-        $[94] = t38;
+    let t36;
+    if ($[87] !== scores.lexical) {
+        t36 = scores.lexical.toFixed(1);
+        $[87] = scores.lexical;
+        $[88] = t36;
     } else {
-        t38 = $[94];
+        t36 = $[88];
     }
-    let t39;
-    if ($[95] !== t38) {
-        t39 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t37;
+    if ($[89] !== t36) {
+        t37 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex items-center justify-between",
             children: [
-                t37,
+                t35,
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                     className: "text-xs text-slate-500",
                     children: [
                         "Band ",
-                        t38
+                        t36
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/BandScoreModal.tsx",
-                    lineNumber: 459,
+                    lineNumber: 394,
                     columnNumber: 67
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 459,
+            lineNumber: 394,
             columnNumber: 11
         }, this);
-        $[95] = t38;
-        $[96] = t39;
+        $[89] = t36;
+        $[90] = t37;
     } else {
-        t39 = $[96];
+        t37 = $[90];
     }
-    let t40;
-    if ($[97] !== handleSliderChange) {
-        t40 = ({
-            "BandScoreModal[<input>.onChange]": (e_2)=>handleSliderChange("lexical", e_2.target.value)
+    let t38;
+    if ($[91] !== handleSlider) {
+        t38 = ({
+            "BandScoreModal[<input>.onChange]": (e_2)=>handleSlider("lexical", e_2.target.value)
         })["BandScoreModal[<input>.onChange]"];
-        $[97] = handleSliderChange;
-        $[98] = t40;
+        $[91] = handleSlider;
+        $[92] = t38;
     } else {
-        t40 = $[98];
+        t38 = $[92];
     }
-    let t41;
-    if ($[99] !== scores.lexical || $[100] !== t40) {
-        t41 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+    let t39;
+    if ($[93] !== scores.lexical || $[94] !== t38) {
+        t39 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
             type: "range",
             min: 0,
             max: 9,
             step: 0.5,
             value: scores.lexical,
-            onChange: t40,
+            onChange: t38,
             className: "mt-2 w-full"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 477,
+            lineNumber: 412,
             columnNumber: 11
         }, this);
-        $[99] = scores.lexical;
+        $[93] = scores.lexical;
+        $[94] = t38;
+        $[95] = t39;
+    } else {
+        t39 = $[95];
+    }
+    let t40;
+    if ($[96] !== aiData.comments.lexical) {
+        t40 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+            className: "mt-1 text-xs text-slate-600",
+            children: aiData.comments.lexical
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 421,
+            columnNumber: 11
+        }, this);
+        $[96] = aiData.comments.lexical;
+        $[97] = t40;
+    } else {
+        t40 = $[97];
+    }
+    let t41;
+    if ($[98] !== t37 || $[99] !== t39 || $[100] !== t40) {
+        t41 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            children: [
+                t37,
+                t39,
+                t40
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 429,
+            columnNumber: 11
+        }, this);
+        $[98] = t37;
+        $[99] = t39;
         $[100] = t40;
         $[101] = t41;
     } else {
         t41 = $[101];
     }
     let t42;
-    if ($[102] !== scores.lexical) {
-        t42 = commentFor("lexical", scores.lexical);
-        $[102] = scores.lexical;
-        $[103] = t42;
-    } else {
-        t42 = $[103];
-    }
-    let t43;
-    if ($[104] !== t42) {
-        t43 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-            className: "mt-1 text-xs text-slate-600",
-            children: t42
-        }, void 0, false, {
-            fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 494,
-            columnNumber: 11
-        }, this);
-        $[104] = t42;
-        $[105] = t43;
-    } else {
-        t43 = $[105];
-    }
-    let t44;
-    if ($[106] !== t39 || $[107] !== t41 || $[108] !== t43) {
-        t44 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            children: [
-                t39,
-                t41,
-                t43
-            ]
-        }, void 0, true, {
-            fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 502,
-            columnNumber: 11
-        }, this);
-        $[106] = t39;
-        $[107] = t41;
-        $[108] = t43;
-        $[109] = t44;
-    } else {
-        t44 = $[109];
-    }
-    let t45;
-    if ($[110] === Symbol.for("react.memo_cache_sentinel")) {
-        t45 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
+    if ($[102] === Symbol.for("react.memo_cache_sentinel")) {
+        t42 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Grammatical Range & Accuracy"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 512,
+            lineNumber: 439,
             columnNumber: 11
         }, this);
-        $[110] = t45;
+        $[102] = t42;
     } else {
-        t45 = $[110];
+        t42 = $[102];
     }
-    let t46;
-    if ($[111] !== scores.grammar) {
-        t46 = scores.grammar.toFixed(1);
-        $[111] = scores.grammar;
-        $[112] = t46;
+    let t43;
+    if ($[103] !== scores.grammar) {
+        t43 = scores.grammar.toFixed(1);
+        $[103] = scores.grammar;
+        $[104] = t43;
     } else {
-        t46 = $[112];
+        t43 = $[104];
     }
-    let t47;
-    if ($[113] !== t46) {
-        t47 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t44;
+    if ($[105] !== t43) {
+        t44 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex items-center justify-between",
             children: [
-                t45,
+                t42,
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
                     className: "text-xs text-slate-500",
                     children: [
                         "Band ",
-                        t46
+                        t43
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/components/BandScoreModal.tsx",
-                    lineNumber: 527,
+                    lineNumber: 454,
                     columnNumber: 67
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 527,
+            lineNumber: 454,
             columnNumber: 11
         }, this);
-        $[113] = t46;
-        $[114] = t47;
+        $[105] = t43;
+        $[106] = t44;
     } else {
-        t47 = $[114];
+        t44 = $[106];
     }
-    let t48;
-    if ($[115] !== handleSliderChange) {
-        t48 = ({
-            "BandScoreModal[<input>.onChange]": (e_3)=>handleSliderChange("grammar", e_3.target.value)
+    let t45;
+    if ($[107] !== handleSlider) {
+        t45 = ({
+            "BandScoreModal[<input>.onChange]": (e_3)=>handleSlider("grammar", e_3.target.value)
         })["BandScoreModal[<input>.onChange]"];
-        $[115] = handleSliderChange;
-        $[116] = t48;
+        $[107] = handleSlider;
+        $[108] = t45;
     } else {
-        t48 = $[116];
+        t45 = $[108];
     }
-    let t49;
-    if ($[117] !== scores.grammar || $[118] !== t48) {
-        t49 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
+    let t46;
+    if ($[109] !== scores.grammar || $[110] !== t45) {
+        t46 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("input", {
             type: "range",
             min: 0,
             max: 9,
             step: 0.5,
             value: scores.grammar,
-            onChange: t48,
+            onChange: t45,
             className: "mt-2 w-full"
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 545,
+            lineNumber: 472,
             columnNumber: 11
         }, this);
-        $[117] = scores.grammar;
-        $[118] = t48;
-        $[119] = t49;
+        $[109] = scores.grammar;
+        $[110] = t45;
+        $[111] = t46;
     } else {
-        t49 = $[119];
+        t46 = $[111];
     }
-    let t50;
-    if ($[120] !== scores.grammar) {
-        t50 = commentFor("grammar", scores.grammar);
-        $[120] = scores.grammar;
-        $[121] = t50;
-    } else {
-        t50 = $[121];
-    }
-    let t51;
-    if ($[122] !== t50) {
-        t51 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+    let t47;
+    if ($[112] !== aiData.comments.grammar) {
+        t47 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
             className: "mt-1 text-xs text-slate-600",
-            children: t50
+            children: aiData.comments.grammar
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 562,
+            lineNumber: 481,
             columnNumber: 11
         }, this);
-        $[122] = t50;
-        $[123] = t51;
+        $[112] = aiData.comments.grammar;
+        $[113] = t47;
     } else {
-        t51 = $[123];
+        t47 = $[113];
     }
-    let t52;
-    if ($[124] !== t47 || $[125] !== t49 || $[126] !== t51) {
-        t52 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t48;
+    if ($[114] !== t44 || $[115] !== t46 || $[116] !== t47) {
+        t48 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             children: [
-                t47,
-                t49,
-                t51
+                t44,
+                t46,
+                t47
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 570,
+            lineNumber: 489,
             columnNumber: 11
         }, this);
-        $[124] = t47;
-        $[125] = t49;
-        $[126] = t51;
-        $[127] = t52;
+        $[114] = t44;
+        $[115] = t46;
+        $[116] = t47;
+        $[117] = t48;
     } else {
-        t52 = $[127];
+        t48 = $[117];
     }
-    let t53;
-    if ($[128] !== t28 || $[129] !== t36 || $[130] !== t44 || $[131] !== t52) {
-        t53 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t49;
+    if ($[118] !== t27 || $[119] !== t34 || $[120] !== t41 || $[121] !== t48) {
+        t49 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "space-y-4 text-sm",
             children: [
-                t28,
-                t36,
-                t44,
-                t52
+                t27,
+                t34,
+                t41,
+                t48
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 580,
+            lineNumber: 499,
             columnNumber: 11
         }, this);
-        $[128] = t28;
-        $[129] = t36;
-        $[130] = t44;
-        $[131] = t52;
-        $[132] = t53;
+        $[118] = t27;
+        $[119] = t34;
+        $[120] = t41;
+        $[121] = t48;
+        $[122] = t49;
     } else {
-        t53 = $[132];
+        t49 = $[122];
+    }
+    let t50;
+    if ($[123] === Symbol.for("react.memo_cache_sentinel")) {
+        t50 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("h3", {
+            className: "text-sm font-semibold",
+            children: "AI Examiner Comments"
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 510,
+            columnNumber: 11
+        }, this);
+        $[123] = t50;
+    } else {
+        t50 = $[123];
+    }
+    let t51;
+    if ($[124] === Symbol.for("react.memo_cache_sentinel")) {
+        t51 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+            children: "Overview:"
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 517,
+            columnNumber: 11
+        }, this);
+        $[124] = t51;
+    } else {
+        t51 = $[124];
+    }
+    let t52;
+    if ($[125] !== aiData.comments.overview) {
+        t52 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "rounded-md bg-slate-50 p-3",
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                children: [
+                    t51,
+                    " ",
+                    aiData.comments.overview
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/components/BandScoreModal.tsx",
+                lineNumber: 524,
+                columnNumber: 55
+            }, this)
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 524,
+            columnNumber: 11
+        }, this);
+        $[125] = aiData.comments.overview;
+        $[126] = t52;
+    } else {
+        t52 = $[126];
+    }
+    let t53;
+    if ($[127] === Symbol.for("react.memo_cache_sentinel")) {
+        t53 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
+            children: "Advice to Improve:"
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 532,
+            columnNumber: 11
+        }, this);
+        $[127] = t53;
+    } else {
+        t53 = $[127];
     }
     let t54;
-    if ($[133] !== onClose) {
+    if ($[128] !== aiData.comments.advice) {
         t54 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "mt-6 flex items-center justify-end gap-2",
+            className: "rounded-md bg-slate-50 p-3",
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                children: [
+                    t53,
+                    " ",
+                    aiData.comments.advice
+                ]
+            }, void 0, true, {
+                fileName: "[project]/src/components/BandScoreModal.tsx",
+                lineNumber: 539,
+                columnNumber: 55
+            }, this)
+        }, void 0, false, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 539,
+            columnNumber: 11
+        }, this);
+        $[128] = aiData.comments.advice;
+        $[129] = t54;
+    } else {
+        t54 = $[129];
+    }
+    let t55;
+    if ($[130] !== t52 || $[131] !== t54) {
+        t55 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "mt-6 space-y-4 text-sm",
+            children: [
+                t50,
+                t52,
+                t54
+            ]
+        }, void 0, true, {
+            fileName: "[project]/src/components/BandScoreModal.tsx",
+            lineNumber: 547,
+            columnNumber: 11
+        }, this);
+        $[130] = t52;
+        $[131] = t54;
+        $[132] = t55;
+    } else {
+        t55 = $[132];
+    }
+    let t56;
+    if ($[133] !== onClose) {
+        t56 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+            className: "mt-6 text-right",
             children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
-                variant: "outline",
                 onClick: onClose,
                 children: "Close"
             }, void 0, false, {
                 fileName: "[project]/src/components/BandScoreModal.tsx",
-                lineNumber: 591,
-                columnNumber: 69
+                lineNumber: 556,
+                columnNumber: 44
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 591,
+            lineNumber: 556,
             columnNumber: 11
         }, this);
         $[133] = onClose;
-        $[134] = t54;
+        $[134] = t56;
     } else {
-        t54 = $[134];
+        t56 = $[134];
     }
-    let t55;
-    if ($[135] !== t10 || $[136] !== t11 || $[137] !== t12 || $[138] !== t20 || $[139] !== t53 || $[140] !== t54 || $[141] !== t9) {
-        t55 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t57;
+    if ($[135] !== t10 || $[136] !== t11 || $[137] !== t12 || $[138] !== t20 || $[139] !== t49 || $[140] !== t55 || $[141] !== t56 || $[142] !== t9) {
+        t57 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: t9,
             onClick: t10,
             children: [
                 t11,
                 t12,
                 t20,
-                t53,
-                t54
+                t49,
+                t55,
+                t56
             ]
         }, void 0, true, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 599,
+            lineNumber: 564,
             columnNumber: 11
         }, this);
         $[135] = t10;
         $[136] = t11;
         $[137] = t12;
         $[138] = t20;
-        $[139] = t53;
-        $[140] = t54;
-        $[141] = t9;
-        $[142] = t55;
+        $[139] = t49;
+        $[140] = t55;
+        $[141] = t56;
+        $[142] = t9;
+        $[143] = t57;
     } else {
-        t55 = $[142];
+        t57 = $[143];
     }
-    let t56;
-    if ($[143] !== t13 || $[144] !== t14 || $[145] !== t55) {
-        t56 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t58;
+    if ($[144] !== t13 || $[145] !== t14 || $[146] !== t57) {
+        t58 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: t13,
             onClick: t14,
-            children: t55
+            children: t57
         }, void 0, false, {
             fileName: "[project]/src/components/BandScoreModal.tsx",
-            lineNumber: 613,
+            lineNumber: 579,
             columnNumber: 11
         }, this);
-        $[143] = t13;
-        $[144] = t14;
-        $[145] = t55;
-        $[146] = t56;
+        $[144] = t13;
+        $[145] = t14;
+        $[146] = t57;
+        $[147] = t58;
     } else {
-        t56 = $[146];
+        t58 = $[147];
     }
-    return t56;
+    return t58;
 }
 _s(BandScoreModal, "OJBKG96Jp01C96Qc4oSAlhSLKxI=");
 _c = BandScoreModal;
@@ -2942,9 +2969,8 @@ var _s = __turbopack_context__.k.signature();
 ;
 ;
 ;
-// Helper: default exam duration based on IELTS task
+// Default IELTS durations
 function defaultDurationForTask(task) {
-    // Task 1 -> 20 minutes, Task 2 -> 40 minutes
     return task === 'task1' ? 20 * 60 : 40 * 60;
 }
 function countWords(text) {
@@ -2952,12 +2978,12 @@ function countWords(text) {
 }
 function Home() {
     _s();
-    const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(95);
-    if ($[0] !== "7e3ed4332ad57d041076b2094cce34726f924522a709ba6b7c82cd8bd99ae2e3") {
-        for(let $i = 0; $i < 95; $i += 1){
+    const $ = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$compiler$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["c"])(99);
+    if ($[0] !== "a2b62732f448f060efe0a73689807ede2ba0d390d8821e159b45b8e188e510be") {
+        for(let $i = 0; $i < 99; $i += 1){
             $[$i] = Symbol.for("react.memo_cache_sentinel");
         }
-        $[0] = "7e3ed4332ad57d041076b2094cce34726f924522a709ba6b7c82cd8bd99ae2e3";
+        $[0] = "a2b62732f448f060efe0a73689807ede2ba0d390d8821e159b45b8e188e510be";
     }
     const [mode, setMode] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("academic");
     const [task, setTask] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])("task2");
@@ -2988,6 +3014,10 @@ function Home() {
     const [essay, setEssay] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$useLocalStorage$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"])(storageKey, "");
     const currentWordCount = countWords(essay);
     const [showResults, setShowResults] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const [aiResult, setAiResult] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(null);
+    const [isLoading, setIsLoading] = (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useState"])(false);
+    const prompt = selectedTask?.prompt ?? "";
+    const minWords = task === "task1" ? 150 : 250;
     let t2;
     let t3;
     if ($[5] !== essay) {
@@ -3016,31 +3046,101 @@ function Home() {
         t3 = $[7];
     }
     (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$index$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["useEffect"])(t2, t3);
-    const prompt = selectedTask?.prompt ?? "";
-    const minWords = task === "task1" ? 150 : 250;
     let t4;
-    if ($[8] !== currentWordCount || $[9] !== minWords || $[10] !== task) {
+    if ($[8] !== currentWordCount || $[9] !== essay || $[10] !== minWords || $[11] !== prompt || $[12] !== task) {
         t4 = ({
-            "Home[handleSubmit]": ()=>{
+            "Home[handleSubmit]": async ()=>{
                 if (currentWordCount < minWords) {
-                    const proceed = window.confirm(`You have written ${currentWordCount} words, but the recommended minimum for ${task === "task1" ? "Task 1" : "Task 2"} is ${minWords} words.\n\nSubmitting fewer words may reduce your band score for Task Response.\n\nDo you still want to submit?`);
+                    const proceed = window.confirm(`You have written ${currentWordCount} words, but the minimum for ${task === "task1" ? "Task 1" : "Task 2"} is ${minWords}. Submitting fewer words may reduce your Task Response score.\n\nProceed anyway?`);
                     if (!proceed) {
                         return;
                     }
                 }
-                setShowResults(true);
+                setIsRunning(false);
+                setIsLoading(true);
+                ;
+                try {
+                    const res = await fetch("/api/score", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            essay,
+                            task,
+                            wordCount: currentWordCount,
+                            question: prompt
+                        })
+                    });
+                    const data = await res.json();
+                    if (data.error) {
+                        alert("Scoring failed: " + data.error);
+                        setIsLoading(false);
+                        return;
+                    }
+                    setAiResult(data);
+                    setShowResults(true);
+                } catch (t5) {
+                    const err = t5;
+                    alert("Error scoring essay");
+                    console.error(err);
+                }
+                setIsLoading(false);
             }
         })["Home[handleSubmit]"];
         $[8] = currentWordCount;
-        $[9] = minWords;
-        $[10] = task;
-        $[11] = t4;
+        $[9] = essay;
+        $[10] = minWords;
+        $[11] = prompt;
+        $[12] = task;
+        $[13] = t4;
     } else {
-        t4 = $[11];
+        t4 = $[13];
     }
     const handleSubmit = t4;
+    if (isLoading) {
+        let t5;
+        if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
+            t5 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
+                className: "min-h-dvh flex items-center justify-center bg-white text-slate-900",
+                children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                    className: "text-center space-y-4",
+                    children: [
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "animate-spin text-4xl",
+                            children: "⏳"
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/page.tsx",
+                            lineNumber: 146,
+                            columnNumber: 136
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                            className: "text-sm text-slate-600",
+                            children: "Scoring your essay with AI examiner…"
+                        }, void 0, false, {
+                            fileName: "[project]/src/app/page.tsx",
+                            lineNumber: 146,
+                            columnNumber: 182
+                        }, this)
+                    ]
+                }, void 0, true, {
+                    fileName: "[project]/src/app/page.tsx",
+                    lineNumber: 146,
+                    columnNumber: 97
+                }, this)
+            }, void 0, false, {
+                fileName: "[project]/src/app/page.tsx",
+                lineNumber: 146,
+                columnNumber: 12
+            }, this);
+            $[14] = t5;
+        } else {
+            t5 = $[14];
+        }
+        return t5;
+    }
     let t5;
-    if ($[12] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
         t5 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("header", {
             className: "flex items-center justify-between",
             children: [
@@ -3049,7 +3149,7 @@ function Home() {
                     children: "IELTS Writing Practice"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 113,
+                    lineNumber: 155,
                     columnNumber: 64
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
@@ -3059,34 +3159,34 @@ function Home() {
                     children: "GitHub"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 113,
+                    lineNumber: 155,
                     columnNumber: 130
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 113,
+            lineNumber: 155,
             columnNumber: 10
         }, this);
-        $[12] = t5;
+        $[15] = t5;
     } else {
-        t5 = $[12];
+        t5 = $[15];
     }
     let t6;
-    if ($[13] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
         t6 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Module"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 120,
+            lineNumber: 162,
             columnNumber: 10
         }, this);
-        $[13] = t6;
+        $[16] = t6;
     } else {
-        t6 = $[13];
+        t6 = $[16];
     }
     let t7;
-    if ($[14] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[17] === Symbol.for("react.memo_cache_sentinel")) {
         t7 = ({
             "Home[<Select>.onValueChange]": (v)=>{
                 setMode(v);
@@ -3095,31 +3195,29 @@ function Home() {
                 setResetToken(_HomeSelectOnValueChangeSetResetToken);
             }
         })["Home[<Select>.onValueChange]"];
-        $[14] = t7;
+        $[17] = t7;
     } else {
-        t7 = $[14];
+        t7 = $[17];
     }
     let t8;
-    if ($[15] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[18] === Symbol.for("react.memo_cache_sentinel")) {
         t8 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectTrigger"], {
-            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {
-                placeholder: "Select module"
-            }, void 0, false, {
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {}, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 141,
+                lineNumber: 183,
                 columnNumber: 25
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 141,
+            lineNumber: 183,
             columnNumber: 10
         }, this);
-        $[15] = t8;
+        $[18] = t8;
     } else {
-        t8 = $[15];
+        t8 = $[18];
     }
     let t9;
-    if ($[16] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
         t9 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -3127,7 +3225,7 @@ function Home() {
                     children: "Academic"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 148,
+                    lineNumber: 190,
                     columnNumber: 25
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -3135,21 +3233,21 @@ function Home() {
                     children: "General"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 148,
+                    lineNumber: 190,
                     columnNumber: 75
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 148,
+            lineNumber: 190,
             columnNumber: 10
         }, this);
-        $[16] = t9;
+        $[19] = t9;
     } else {
-        t9 = $[16];
+        t9 = $[19];
     }
     let t10;
-    if ($[17] !== mode) {
+    if ($[20] !== mode) {
         t10 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "space-y-2",
             children: [
@@ -3163,70 +3261,68 @@ function Home() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 155,
+                    lineNumber: 197,
                     columnNumber: 42
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 155,
+            lineNumber: 197,
             columnNumber: 11
         }, this);
-        $[17] = mode;
-        $[18] = t10;
+        $[20] = mode;
+        $[21] = t10;
     } else {
-        t10 = $[18];
+        t10 = $[21];
     }
     let t11;
-    if ($[19] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[22] === Symbol.for("react.memo_cache_sentinel")) {
         t11 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Task"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 163,
+            lineNumber: 205,
             columnNumber: 11
         }, this);
-        $[19] = t11;
+        $[22] = t11;
     } else {
-        t11 = $[19];
+        t11 = $[22];
     }
     let t12;
-    if ($[20] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[23] === Symbol.for("react.memo_cache_sentinel")) {
         t12 = ({
             "Home[<Select>.onValueChange]": (v_0)=>{
-                const newTask = v_0;
-                setTask(newTask);
+                const t_1 = v_0;
+                setTask(t_1);
                 setSelectedTaskId(null);
                 setIsRunning(false);
-                setDuration(defaultDurationForTask(newTask));
+                setDuration(defaultDurationForTask(t_1));
                 setResetToken(_HomeSelectOnValueChangeSetResetToken2);
             }
         })["Home[<Select>.onValueChange]"];
-        $[20] = t12;
+        $[23] = t12;
     } else {
-        t12 = $[20];
+        t12 = $[23];
     }
     let t13;
-    if ($[21] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[24] === Symbol.for("react.memo_cache_sentinel")) {
         t13 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectTrigger"], {
-            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {
-                placeholder: "Select task"
-            }, void 0, false, {
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {}, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 186,
+                lineNumber: 228,
                 columnNumber: 26
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 186,
+            lineNumber: 228,
             columnNumber: 11
         }, this);
-        $[21] = t13;
+        $[24] = t13;
     } else {
-        t13 = $[21];
+        t13 = $[24];
     }
     let t14;
-    if ($[22] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
         t14 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -3234,7 +3330,7 @@ function Home() {
                     children: "Task 1 (20 min / 150 words)"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 193,
+                    lineNumber: 235,
                     columnNumber: 26
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
@@ -3242,21 +3338,21 @@ function Home() {
                     children: "Task 2 (40 min / 250 words)"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 193,
+                    lineNumber: 235,
                     columnNumber: 92
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 193,
+            lineNumber: 235,
             columnNumber: 11
         }, this);
-        $[22] = t14;
+        $[25] = t14;
     } else {
-        t14 = $[22];
+        t14 = $[25];
     }
     let t15;
-    if ($[23] !== task) {
+    if ($[26] !== task) {
         t15 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "space-y-2",
             children: [
@@ -3270,36 +3366,36 @@ function Home() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 200,
+                    lineNumber: 242,
                     columnNumber: 43
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 200,
+            lineNumber: 242,
             columnNumber: 11
         }, this);
-        $[23] = task;
-        $[24] = t15;
+        $[26] = task;
+        $[27] = t15;
     } else {
-        t15 = $[24];
+        t15 = $[27];
     }
     let t16;
-    if ($[25] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
         t16 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$label$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Label"], {
             children: "Duration"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 208,
+            lineNumber: 250,
             columnNumber: 11
         }, this);
-        $[25] = t16;
+        $[28] = t16;
     } else {
-        t16 = $[25];
+        t16 = $[28];
     }
     const t17 = String(duration);
     let t18;
-    if ($[26] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[29] === Symbol.for("react.memo_cache_sentinel")) {
         t18 = ({
             "Home[<Select>.onValueChange]": (v_1)=>{
                 setDuration(Number(v_1));
@@ -3307,59 +3403,57 @@ function Home() {
                 setResetToken(_HomeSelectOnValueChangeSetResetToken3);
             }
         })["Home[<Select>.onValueChange]"];
-        $[26] = t18;
+        $[29] = t18;
     } else {
-        t18 = $[26];
+        t18 = $[29];
     }
     let t19;
-    if ($[27] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[30] === Symbol.for("react.memo_cache_sentinel")) {
         t19 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectTrigger"], {
-            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {
-                placeholder: "Duration"
-            }, void 0, false, {
+            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectValue"], {}, void 0, false, {
                 fileName: "[project]/src/app/page.tsx",
-                lineNumber: 229,
+                lineNumber: 271,
                 columnNumber: 26
             }, this)
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 229,
+            lineNumber: 271,
             columnNumber: 11
         }, this);
-        $[27] = t19;
+        $[30] = t19;
     } else {
-        t19 = $[27];
+        t19 = $[30];
     }
     let t20;
-    if ($[28] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[31] === Symbol.for("react.memo_cache_sentinel")) {
         t20 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
             value: 1200..toString(),
             children: "20 min (Task 1)"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 236,
+            lineNumber: 278,
             columnNumber: 11
         }, this);
-        $[28] = t20;
+        $[31] = t20;
     } else {
-        t20 = $[28];
+        t20 = $[31];
     }
     let t21;
-    if ($[29] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[32] === Symbol.for("react.memo_cache_sentinel")) {
         t21 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectItem"], {
             value: 2400..toString(),
             children: "40 min (Task 2)"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 243,
+            lineNumber: 285,
             columnNumber: 11
         }, this);
-        $[29] = t21;
+        $[32] = t21;
     } else {
-        t21 = $[29];
+        t21 = $[32];
     }
     let t22;
-    if ($[30] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[33] === Symbol.for("react.memo_cache_sentinel")) {
         t22 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$select$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["SelectContent"], {
             children: [
                 t20,
@@ -3369,21 +3463,21 @@ function Home() {
                     children: "60 min (Full test)"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 250,
+                    lineNumber: 292,
                     columnNumber: 36
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 250,
+            lineNumber: 292,
             columnNumber: 11
         }, this);
-        $[30] = t22;
+        $[33] = t22;
     } else {
-        t22 = $[30];
+        t22 = $[33];
     }
     let t23;
-    if ($[31] !== t17) {
+    if ($[34] !== t17) {
         t23 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "space-y-2",
             children: [
@@ -3397,22 +3491,22 @@ function Home() {
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 257,
+                    lineNumber: 299,
                     columnNumber: 43
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 257,
+            lineNumber: 299,
             columnNumber: 11
         }, this);
-        $[31] = t17;
-        $[32] = t23;
+        $[34] = t17;
+        $[35] = t23;
     } else {
-        t23 = $[32];
+        t23 = $[35];
     }
     let t24;
-    if ($[33] !== t10 || $[34] !== t15 || $[35] !== t23) {
+    if ($[36] !== t10 || $[37] !== t15 || $[38] !== t23) {
         t24 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "grid grid-cols-1 md:grid-cols-3 gap-4",
             children: [
@@ -3422,72 +3516,74 @@ function Home() {
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 265,
+            lineNumber: 307,
             columnNumber: 11
         }, this);
-        $[33] = t10;
-        $[34] = t15;
-        $[35] = t23;
-        $[36] = t24;
+        $[36] = t10;
+        $[37] = t15;
+        $[38] = t23;
+        $[39] = t24;
     } else {
-        t24 = $[36];
+        t24 = $[39];
     }
-    const t25 = `${mode}-${task}-${duration}-${selectedTaskId ?? "none"}-${resetToken}`;
+    const t25 = `${mode}-${task}-${duration}-${selectedTaskId}-${resetToken}`;
     let t26;
-    if ($[37] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[40] === Symbol.for("react.memo_cache_sentinel")) {
         t26 = ({
             "Home[<Timer>.onComplete]": ()=>setIsRunning(false)
         })["Home[<Timer>.onComplete]"];
-        $[37] = t26;
+        $[40] = t26;
     } else {
-        t26 = $[37];
+        t26 = $[40];
     }
     let t27;
-    if ($[38] !== duration || $[39] !== isRunning || $[40] !== t25) {
+    if ($[41] !== duration || $[42] !== isRunning || $[43] !== t25) {
         t27 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$Timer$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
             initialSeconds: duration,
             isRunning: isRunning,
             onComplete: t26
         }, t25, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 285,
+            lineNumber: 327,
             columnNumber: 11
         }, this);
-        $[38] = duration;
-        $[39] = isRunning;
-        $[40] = t25;
-        $[41] = t27;
+        $[41] = duration;
+        $[42] = isRunning;
+        $[43] = t25;
+        $[44] = t27;
     } else {
-        t27 = $[41];
+        t27 = $[44];
     }
     let t28;
-    if ($[42] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[45] !== isRunning) {
         t28 = ({
-            "Home[<Button>.onClick]": ()=>setIsRunning(_HomeButtonOnClickSetIsRunning)
+            "Home[<Button>.onClick]": ()=>setIsRunning(!isRunning)
         })["Home[<Button>.onClick]"];
-        $[42] = t28;
+        $[45] = isRunning;
+        $[46] = t28;
     } else {
-        t28 = $[42];
+        t28 = $[46];
     }
     const t29 = isRunning ? "Pause exam" : "Start exam";
     let t30;
-    if ($[43] !== t29) {
+    if ($[47] !== t28 || $[48] !== t29) {
         t30 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
             variant: "outline",
             onClick: t28,
             children: t29
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 305,
+            lineNumber: 348,
             columnNumber: 11
         }, this);
-        $[43] = t29;
-        $[44] = t30;
+        $[47] = t28;
+        $[48] = t29;
+        $[49] = t30;
     } else {
-        t30 = $[44];
+        t30 = $[49];
     }
     let t31;
-    if ($[45] === Symbol.for("react.memo_cache_sentinel")) {
+    if ($[50] === Symbol.for("react.memo_cache_sentinel")) {
         t31 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
             variant: "outline",
             onClick: {
@@ -3499,52 +3595,51 @@ function Home() {
             children: "Reset timer"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 313,
+            lineNumber: 357,
             columnNumber: 11
         }, this);
-        $[45] = t31;
+        $[50] = t31;
     } else {
-        t31 = $[45];
+        t31 = $[50];
     }
     let t32;
-    if ($[46] !== setEssay) {
+    if ($[51] !== setEssay) {
         t32 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
             variant: "secondary",
             onClick: {
                 "Home[<Button>.onClick]": ()=>setEssay("")
             }["Home[<Button>.onClick]"],
-            title: "Clear essay text (does not affect autosave key)",
             children: "Clear essay"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 325,
+            lineNumber: 369,
             columnNumber: 11
         }, this);
-        $[46] = setEssay;
-        $[47] = t32;
+        $[51] = setEssay;
+        $[52] = t32;
     } else {
-        t32 = $[47];
+        t32 = $[52];
     }
     let t33;
-    if ($[48] !== handleSubmit) {
+    if ($[53] !== handleSubmit) {
         t33 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$button$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Button"], {
             variant: "default",
             onClick: handleSubmit,
-            children: "Submit (preview band)"
+            children: "Submit (AI scoring)"
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 335,
+            lineNumber: 379,
             columnNumber: 11
         }, this);
-        $[48] = handleSubmit;
-        $[49] = t33;
+        $[53] = handleSubmit;
+        $[54] = t33;
     } else {
-        t33 = $[49];
+        t33 = $[54];
     }
     let t34;
-    if ($[50] !== t30 || $[51] !== t32 || $[52] !== t33) {
+    if ($[55] !== t30 || $[56] !== t32 || $[57] !== t33) {
         t34 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-            className: "flex flex-wrap items-center gap-2",
+            className: "flex flex-wrap gap-2",
             children: [
                 t30,
                 t31,
@@ -3553,18 +3648,18 @@ function Home() {
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 343,
+            lineNumber: 387,
             columnNumber: 11
         }, this);
-        $[50] = t30;
-        $[51] = t32;
-        $[52] = t33;
-        $[53] = t34;
+        $[55] = t30;
+        $[56] = t32;
+        $[57] = t33;
+        $[58] = t34;
     } else {
-        t34 = $[53];
+        t34 = $[58];
     }
     let t35;
-    if ($[54] !== t27 || $[55] !== t34) {
+    if ($[59] !== t27 || $[60] !== t34) {
         t35 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "flex items-center justify-between gap-4",
             children: [
@@ -3573,91 +3668,76 @@ function Home() {
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 353,
+            lineNumber: 397,
             columnNumber: 11
         }, this);
-        $[54] = t27;
-        $[55] = t34;
-        $[56] = t35;
+        $[59] = t27;
+        $[60] = t34;
+        $[61] = t35;
     } else {
-        t35 = $[56];
+        t35 = $[61];
     }
     let t36;
-    if ($[57] === Symbol.for("react.memo_cache_sentinel")) {
-        t36 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-            className: "text-xs text-slate-500",
-            children: "Task 1: recommended minimum 150 words (~20 minutes). Task 2: recommended minimum 250 words (~40 minutes)."
-        }, void 0, false, {
-            fileName: "[project]/src/app/page.tsx",
-            lineNumber: 362,
-            columnNumber: 11
-        }, this);
-        $[57] = t36;
-    } else {
-        t36 = $[57];
-    }
-    let t37;
-    if ($[58] !== t24 || $[59] !== t35) {
-        t37 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
+    if ($[62] !== t24 || $[63] !== t35) {
+        t36 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
             className: "p-4 space-y-4",
             children: [
                 t24,
-                t35,
-                t36
+                t35
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 369,
+            lineNumber: 406,
             columnNumber: 11
         }, this);
-        $[58] = t24;
-        $[59] = t35;
-        $[60] = t37;
+        $[62] = t24;
+        $[63] = t35;
+        $[64] = t36;
     } else {
-        t37 = $[60];
+        t36 = $[64];
     }
-    let t38;
-    if ($[61] === Symbol.for("react.memo_cache_sentinel")) {
-        t38 = ({
+    let t37;
+    if ($[65] === Symbol.for("react.memo_cache_sentinel")) {
+        t37 = ({
             "Home[<TaskFeed>.onChange]": (id)=>{
                 setSelectedTaskId(id);
                 setIsRunning(false);
                 setResetToken(_HomeTaskFeedOnChangeSetResetToken);
             }
         })["Home[<TaskFeed>.onChange]"];
-        $[61] = t38;
+        $[65] = t37;
     } else {
-        t38 = $[61];
+        t37 = $[65];
     }
-    let t39;
-    if ($[62] !== mode || $[63] !== selectedTaskId || $[64] !== task) {
-        t39 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TaskFeed$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+    let t38;
+    if ($[66] !== mode || $[67] !== selectedTaskId || $[68] !== task) {
+        t38 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$TaskFeed$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
             module: mode,
             task: task,
             selectedId: selectedTaskId,
-            onChange: t38
+            onChange: t37
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 391,
+            lineNumber: 428,
             columnNumber: 11
         }, this);
-        $[62] = mode;
-        $[63] = selectedTaskId;
-        $[64] = task;
-        $[65] = t39;
+        $[66] = mode;
+        $[67] = selectedTaskId;
+        $[68] = task;
+        $[69] = t38;
     } else {
-        t39 = $[65];
+        t38 = $[69];
     }
-    let t40;
-    if ($[66] !== prompt) {
-        t40 = prompt && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t39;
+    if ($[70] !== prompt) {
+        t39 = prompt && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "rounded-md bg-slate-50 p-3 text-sm text-slate-700",
             children: [
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("strong", {
                     children: "Question:"
                 }, void 0, false, {
                     fileName: "[project]/src/app/page.tsx",
-                    lineNumber: 401,
+                    lineNumber: 438,
                     columnNumber: 88
                 }, this),
                 " ",
@@ -3665,160 +3745,157 @@ function Home() {
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 401,
+            lineNumber: 438,
             columnNumber: 21
         }, this);
-        $[66] = prompt;
-        $[67] = t40;
+        $[70] = prompt;
+        $[71] = t39;
     } else {
-        t40 = $[67];
+        t39 = $[71];
     }
-    let t41;
-    if ($[68] !== essay || $[69] !== isRunning || $[70] !== setEssay) {
-        t41 = ({
-            "Home[<EssayBox>.onChange]": (next)=>{
-                if (!isRunning && essay.trim().length === 0 && next.trim().length > 0) {
+    let t40;
+    if ($[72] !== essay || $[73] !== isRunning || $[74] !== setEssay) {
+        t40 = ({
+            "Home[<EssayBox>.onChange]": (text)=>{
+                if (!isRunning && essay.trim().length === 0 && text.trim().length > 0) {
                     setIsRunning(true);
                 }
-                setEssay(next);
+                setEssay(text);
             }
         })["Home[<EssayBox>.onChange]"];
-        $[68] = essay;
-        $[69] = isRunning;
-        $[70] = setEssay;
-        $[71] = t41;
+        $[72] = essay;
+        $[73] = isRunning;
+        $[74] = setEssay;
+        $[75] = t40;
     } else {
-        t41 = $[71];
+        t40 = $[75];
     }
-    let t42;
-    if ($[72] !== essay || $[73] !== t41) {
-        t42 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$EssayBox$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+    let t41;
+    if ($[76] !== essay || $[77] !== t40) {
+        t41 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$EssayBox$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
             value: essay,
-            onChange: t41
+            onChange: t40
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 426,
+            lineNumber: 463,
             columnNumber: 11
         }, this);
-        $[72] = essay;
-        $[73] = t41;
-        $[74] = t42;
+        $[76] = essay;
+        $[77] = t40;
+        $[78] = t41;
     } else {
-        t42 = $[74];
+        t41 = $[78];
     }
-    const t43 = task === "task1" ? "Task 1" : "Task 2";
-    let t44;
-    if ($[75] !== currentWordCount || $[76] !== minWords || $[77] !== t43) {
-        t44 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+    let t42;
+    if ($[79] !== currentWordCount || $[80] !== minWords) {
+        t42 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
             className: "text-xs text-slate-500",
             children: [
                 "Current words: ",
                 currentWordCount,
                 " / minimum ",
-                minWords,
-                " for ",
-                t43,
-                "."
+                minWords
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 436,
+            lineNumber: 472,
             columnNumber: 11
         }, this);
-        $[75] = currentWordCount;
-        $[76] = minWords;
-        $[77] = t43;
-        $[78] = t44;
+        $[79] = currentWordCount;
+        $[80] = minWords;
+        $[81] = t42;
     } else {
-        t44 = $[78];
+        t42 = $[81];
     }
-    let t45;
-    if ($[79] !== t39 || $[80] !== t40 || $[81] !== t42 || $[82] !== t44) {
-        t45 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
+    let t43;
+    if ($[82] !== t38 || $[83] !== t39 || $[84] !== t41 || $[85] !== t42) {
+        t43 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$ui$2f$card$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["Card"], {
             className: "p-4 space-y-4",
             children: [
+                t38,
                 t39,
-                t40,
-                t42,
-                t44
+                t41,
+                t42
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 446,
+            lineNumber: 481,
             columnNumber: 11
         }, this);
-        $[79] = t39;
-        $[80] = t40;
-        $[81] = t42;
-        $[82] = t44;
-        $[83] = t45;
+        $[82] = t38;
+        $[83] = t39;
+        $[84] = t41;
+        $[85] = t42;
+        $[86] = t43;
     } else {
-        t45 = $[83];
+        t43 = $[86];
     }
-    let t46;
-    if ($[84] !== t37 || $[85] !== t45) {
-        t46 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+    let t44;
+    if ($[87] !== t36 || $[88] !== t43) {
+        t44 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
             className: "mx-auto max-w-3xl space-y-6",
             children: [
                 t5,
-                t37,
-                t45
+                t36,
+                t43
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 457,
+            lineNumber: 492,
             columnNumber: 11
         }, this);
-        $[84] = t37;
-        $[85] = t45;
-        $[86] = t46;
+        $[87] = t36;
+        $[88] = t43;
+        $[89] = t44;
     } else {
-        t46 = $[86];
+        t44 = $[89];
     }
-    let t47;
-    if ($[87] !== currentWordCount || $[88] !== essay || $[89] !== showResults || $[90] !== task) {
-        t47 = showResults && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$BandScoreModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
+    let t45;
+    if ($[90] !== aiResult || $[91] !== currentWordCount || $[92] !== essay || $[93] !== showResults || $[94] !== task) {
+        t45 = showResults && aiResult && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$src$2f$components$2f$BandScoreModal$2e$tsx__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"], {
             task: task,
             wordCount: currentWordCount,
             essay: essay,
+            aiData: aiResult,
             onClose: {
                 "Home[<BandScoreModal>.onClose]": ()=>setShowResults(false)
             }["Home[<BandScoreModal>.onClose]"]
         }, void 0, false, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 466,
-            columnNumber: 26
+            lineNumber: 501,
+            columnNumber: 38
         }, this);
-        $[87] = currentWordCount;
-        $[88] = essay;
-        $[89] = showResults;
-        $[90] = task;
-        $[91] = t47;
+        $[90] = aiResult;
+        $[91] = currentWordCount;
+        $[92] = essay;
+        $[93] = showResults;
+        $[94] = task;
+        $[95] = t45;
     } else {
-        t47 = $[91];
+        t45 = $[95];
     }
-    let t48;
-    if ($[92] !== t46 || $[93] !== t47) {
-        t48 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
+    let t46;
+    if ($[96] !== t44 || $[97] !== t45) {
+        t46 = /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$compiled$2f$react$2f$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$client$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
             className: "min-h-dvh bg-white text-slate-900 p-6",
             children: [
-                t46,
-                t47
+                t44,
+                t45
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/page.tsx",
-            lineNumber: 479,
+            lineNumber: 515,
             columnNumber: 11
         }, this);
-        $[92] = t46;
-        $[93] = t47;
-        $[94] = t48;
+        $[96] = t44;
+        $[97] = t45;
+        $[98] = t46;
     } else {
-        t48 = $[94];
+        t46 = $[98];
     }
-    return t48;
+    return t46;
 }
-_s(Home, "nvlu7RubmK1yGI0pI4YrZRZkf10=", false, function() {
+_s(Home, "VTIgR31cIAbdlUU9ryTc183jXyQ=", false, function() {
     return [
         __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$hooks$2f$useLocalStorage$2e$ts__$5b$app$2d$client$5d$__$28$ecmascript$29$__["default"]
     ];
@@ -3830,14 +3907,11 @@ function _HomeTaskFeedOnChangeSetResetToken(t_4) {
 function _HomeButtonOnClickSetResetToken(t_3) {
     return t_3 + 1;
 }
-function _HomeButtonOnClickSetIsRunning(prev) {
-    return !prev;
-}
 function _HomeSelectOnValueChangeSetResetToken3(t_2) {
     return t_2 + 1;
 }
-function _HomeSelectOnValueChangeSetResetToken2(t_1) {
-    return t_1 + 1;
+function _HomeSelectOnValueChangeSetResetToken2(k) {
+    return k + 1;
 }
 function _HomeSelectOnValueChangeSetResetToken(t_0) {
     return t_0 + 1;

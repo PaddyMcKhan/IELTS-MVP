@@ -277,6 +277,10 @@
   transform: var(--tw-rotate-x, ) var(--tw-rotate-y, ) var(--tw-rotate-z, ) var(--tw-skew-x, ) var(--tw-skew-y, );
 }
 
+.animate-spin {
+  animation: var(--animate-spin);
+}
+
 .cursor-default {
   cursor: default;
 }
@@ -323,10 +327,6 @@
 
 .justify-center {
   justify-content: center;
-}
-
-.justify-end {
-  justify-content: flex-end;
 }
 
 .gap-1\.5 {
@@ -534,6 +534,14 @@
 
 .pl-2 {
   padding-left: calc(var(--spacing) * 2);
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-right {
+  text-align: right;
 }
 
 .text-2xl {
@@ -1172,6 +1180,7 @@
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
+    --animate-spin: spin 1s linear infinite;
     --default-transition-duration: .15s;
     --default-transition-timing-function: cubic-bezier(.4, 0, .2, 1);
     --default-font-family: var(--font-geist-sans);
@@ -1936,6 +1945,12 @@
   syntax: "*";
   inherits: false;
   initial-value: 0;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes enter {
