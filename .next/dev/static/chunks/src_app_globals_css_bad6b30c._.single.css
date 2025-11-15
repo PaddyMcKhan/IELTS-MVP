@@ -265,6 +265,10 @@
   flex-direction: column;
 }
 
+.flex-wrap {
+  flex-wrap: wrap;
+}
+
 .items-center {
   align-items: center;
 }
@@ -534,6 +538,10 @@
   color: var(--secondary-foreground);
 }
 
+.text-slate-500 {
+  color: var(--color-slate-500);
+}
+
 .text-slate-600 {
   color: var(--color-slate-600);
 }
@@ -628,6 +636,10 @@
 .select-none {
   -webkit-user-select: none;
   user-select: none;
+}
+
+.running {
+  animation-play-state: running;
 }
 
 .group-data-\[disabled\=true\]\:pointer-events-none:is(:where(.group)[data-disabled="true"] *) {
@@ -1042,6 +1054,7 @@
 @layer theme {
   :root, :host {
     --color-slate-50: #f8fafc;
+    --color-slate-500: #62748e;
     --color-slate-600: #45556c;
     --color-slate-700: #314158;
     --color-slate-900: #0f172b;
@@ -1069,6 +1082,7 @@
   @supports (color: lab(0% 0 0)) {
     :root, :host {
       --color-slate-50: lab(98.1434% -.369519 -1.05966);
+      --color-slate-500: lab(48.0876% -2.03595 -16.5814);
       --color-slate-600: lab(35.5623% -1.74978 -15.4316);
       --color-slate-700: lab(26.9569% -1.47016 -15.6993);
       --color-slate-900: lab(7.78673% 1.82345 -15.0537);

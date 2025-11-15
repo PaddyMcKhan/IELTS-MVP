@@ -1,16 +1,36 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-export default function Timer({ seconds }: { seconds: number }) {
-  const [remaining, setRemaining] = useState(seconds);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+type TimerProps = {
+  initialSeconds: number;
+  isRunning: boolean;
+  onComplete?: () => void;
+};
+
+export default function Timer({ initialSeconds, isRunning, onComplete }: TimerProps) {
+  const [remaining, setRemaining] = useState(initialSeconds);
+
+  // Reset remaining whenever the configured duration changes
+  useEffect(() => {
+    setRemaining(initialSeconds);
+  }, [initialSeconds]);
 
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      setRemaining((s) => Math.max(0, s - 1));
+    if (!isRunning) return;
+
+    const id = window.setInterval(() => {
+      setRemaining((prev) => {
+        if (prev <= 1) {
+          window.clearInterval(id);
+          onComplete?.();
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, []);
+
+    return () => window.clearInterval(id);
+  }, [isRunning, onComplete]);
 
   const mins = String(Math.floor(remaining / 60)).padStart(2, '0');
   const secs = String(remaining % 60).padStart(2, '0');
