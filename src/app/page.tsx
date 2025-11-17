@@ -22,6 +22,13 @@ function countWords(text: string): number {
   return text.trim() ? text.trim().split(/\s+/).length : 0;
 }
 
+type Scores = {
+  taskResponse: number;
+  coherence: number;
+  lexical: number;
+  grammar: number;
+};
+
 export default function Home() {
   const [mode, setMode] = useState<'academic' | 'general'>('academic');
   const [task, setTask] = useState<'task1' | 'task2'>('task2');
@@ -36,6 +43,9 @@ export default function Home() {
   const [isRunning, setIsRunning] = useState(false);
   const [resetToken, setResetToken] = useState(0);
 
+  // Pro toggle: free (gpt-4o-mini) vs pro (gpt-4o)
+  const [isPro, setIsPro] = useState(false);
+
   const storageKey = useMemo(
     () => `ielts:essay:${mode}:${task}:${selectedTaskId ?? 'none'}`,
     [mode, task, selectedTaskId]
@@ -44,13 +54,34 @@ export default function Home() {
   const [essay, setEssay] = useLocalStorage(storageKey, '');
   const currentWordCount = useMemo(() => countWords(essay), [essay]);
 
-  // Modal and AI
+  const prompt = selectedTask?.prompt ?? '';
+  const minWords = task === 'task1' ? 150 : 250;
+
+  // Self-assessment sliders (student prediction)
+  const [selfScores, setSelfScores] = useState<Scores>({
+    taskResponse: 6,
+    coherence: 6,
+    lexical: 6,
+    grammar: 6,
+  });
+  const [hasPrediction, setHasPrediction] = useState(false);
+  const [predictionLocked, setPredictionLocked] = useState(false);
+  const [prediction, setPrediction] = useState<Scores | null>(null);
+
+  // LIVE predicted overall from sliders (always based on selfScores)
+  const livePredictedOverall = useMemo(() => {
+    const avg =
+      (selfScores.taskResponse +
+        selfScores.coherence +
+        selfScores.lexical +
+        selfScores.grammar) / 4;
+    return Math.round(avg * 2) / 2;
+  }, [selfScores]);
+
+  // Modal / results data
   const [showResults, setShowResults] = useState(false);
   const [aiResult, setAiResult] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-
-  const prompt = selectedTask?.prompt ?? '';
-  const minWords = task === 'task1' ? 150 : 250;
 
   // Before unload warning
   useEffect(() => {
@@ -64,6 +95,20 @@ export default function Home() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [essay]);
 
+  const resetFeedback = () => {
+    setAiResult(null);
+    setShowResults(false);
+    setPredictionLocked(false);
+    setHasPrediction(false);
+    setPrediction(null);
+    setSelfScores({
+      taskResponse: 6,
+      coherence: 6,
+      lexical: 6,
+      grammar: 6,
+    });
+  };
+
   // Handle submit → AI scoring
   const handleSubmit = async () => {
     if (currentWordCount < minWords) {
@@ -75,11 +120,20 @@ export default function Home() {
       if (!proceed) return;
     }
 
+    // Lock prediction for this attempt (if user touched sliders)
+    if (hasPrediction) {
+      setPrediction({ ...selfScores });
+    } else {
+      setPrediction(null);
+    }
+    setPredictionLocked(true);
+
     setIsRunning(false);
     setIsLoading(true);
 
     try {
-      const res = await fetch("/api/score", {
+      const query = isPro ? '?pro=true' : '';
+      const res = await fetch(`/api/score${query}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -99,7 +153,6 @@ export default function Home() {
 
       setAiResult(data);
       setShowResults(true);
-
     } catch (err) {
       alert("Error scoring essay");
       console.error(err);
@@ -145,6 +198,8 @@ export default function Home() {
                   setSelectedTaskId(null);
                   setIsRunning(false);
                   setResetToken(t => t + 1);
+                  resetFeedback();
+                  setEssay('');
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -167,6 +222,8 @@ export default function Home() {
                   setIsRunning(false);
                   setDuration(defaultDurationForTask(t));
                   setResetToken(k => k + 1);
+                  resetFeedback();
+                  setEssay('');
                 }}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -198,30 +255,61 @@ export default function Home() {
             </div>
           </div>
 
-          {/* TIMER CONTROL */}
-          <div className="flex items-center justify-between gap-4">
+          {/* TIMER + CONTROLS */}
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <Timer
               key={`${mode}-${task}-${duration}-${selectedTaskId}-${resetToken}`}
               initialSeconds={duration}
               isRunning={isRunning}
               onComplete={() => setIsRunning(false)}
             />
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => setIsRunning(!isRunning)}>
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Pro toggle */}
+              <label className="flex items-center gap-2 text-xs text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={isPro}
+                  onChange={(e) => setIsPro(e.target.checked)}
+                  className="h-4 w-4"
+                />
+                <span>
+                  Use <span className="font-semibold">Pro scoring</span> (gpt-4o)
+                </span>
+              </label>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsRunning(!isRunning)}
+              >
                 {isRunning ? "Pause exam" : "Start exam"}
               </Button>
-              <Button variant="outline" onClick={() => { setIsRunning(false); setResetToken(t => t + 1); }}>
+              <Button
+                variant="outline"
+                onClick={() => { setIsRunning(false); setResetToken(t => t + 1); }}
+              >
                 Reset timer
               </Button>
-              <Button variant="secondary" onClick={() => setEssay('')}>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setEssay('');
+                  resetFeedback();
+                }}
+              >
                 Clear essay
               </Button>
-              <Button variant="default" onClick={handleSubmit}>
+              <Button
+                variant="default"
+                onClick={handleSubmit}
+              >
                 Submit (AI scoring)
               </Button>
             </div>
           </div>
 
+          <p className="text-xs text-slate-500">
+            Scoring model: {isPro ? "Pro (gpt-4o)" : "Free (gpt-4o-mini, suitable for practice)"}.
+          </p>
         </Card>
 
         {/* QUESTION + ESSAY */}
@@ -234,6 +322,8 @@ export default function Home() {
               setSelectedTaskId(id);
               setIsRunning(false);
               setResetToken(t => t + 1);
+              resetFeedback();
+              setEssay('');
             }}
           />
 
@@ -256,21 +346,150 @@ export default function Home() {
           <p className="text-xs text-slate-500">
             Current words: {currentWordCount} / minimum {minWords}
           </p>
-
         </Card>
+
+        {/* SELF-ASSESSMENT CARD */}
+        <Card className="p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Self-assessment (optional)</h2>
+              <p className="text-xs text-slate-500">
+                Use the sliders to predict your band before submitting. Your prediction will lock for this attempt once you click &quot;Submit&quot;.
+              </p>
+            </div>
+            {predictionLocked && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
+                Prediction locked
+              </span>
+            )}
+          </div>
+
+          <div className="rounded-md bg-slate-50 p-3 text-sm">
+            <p className="text-xs uppercase text-slate-500">Your predicted overall band</p>
+            <div className="mt-1 flex items-baseline gap-2">
+              <span className="text-3xl font-semibold">
+                {hasPrediction ? livePredictedOverall.toFixed(1) : '—'}
+              </span>
+              <span className="text-xs text-slate-500">
+                Move the sliders below to set your guess.
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4 text-sm">
+            {/* Task Response */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Task Response</Label>
+                <span className="text-xs text-slate-500">
+                  Band {selfScores.taskResponse.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={9}
+                step={0.5}
+                disabled={predictionLocked}
+                value={selfScores.taskResponse}
+                onChange={(e) => {
+                  setHasPrediction(true);
+                  const val = parseFloat(e.target.value);
+                  setSelfScores(prev => ({ ...prev, taskResponse: val }));
+                }}
+                className="mt-2 w-full"
+              />
+            </div>
+
+            {/* Coherence */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Coherence & Cohesion</Label>
+                <span className="text-xs text-slate-500">
+                  Band {selfScores.coherence.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={9}
+                step={0.5}
+                disabled={predictionLocked}
+                value={selfScores.coherence}
+                onChange={(e) => {
+                  setHasPrediction(true);
+                  const val = parseFloat(e.target.value);
+                  setSelfScores(prev => ({ ...prev, coherence: val }));
+                }}
+                className="mt-2 w-full"
+              />
+            </div>
+
+            {/* Lexical Resource */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Lexical Resource</Label>
+                <span className="text-xs text-slate-500">
+                  Band {selfScores.lexical.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={9}
+                step={0.5}
+                disabled={predictionLocked}
+                value={selfScores.lexical}
+                onChange={(e) => {
+                  setHasPrediction(true);
+                  const val = parseFloat(e.target.value);
+                  setSelfScores(prev => ({ ...prev, lexical: val }));
+                }}
+                className="mt-2 w-full"
+              />
+            </div>
+
+            {/* Grammar */}
+            <div>
+              <div className="flex items-center justify-between">
+                <Label>Grammatical Range & Accuracy</Label>
+                <span className="text-xs text-slate-500">
+                  Band {selfScores.grammar.toFixed(1)}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={9}
+                step={0.5}
+                disabled={predictionLocked}
+                value={selfScores.grammar}
+                onChange={(e) => {
+                  setHasPrediction(true);
+                  const val = parseFloat(e.target.value);
+                  setSelfScores(prev => ({ ...prev, grammar: val }));
+                }}
+                className="mt-2 w-full"
+              />
+            </div>
+          </div>
+        </Card>
+
+        {/* RESULTS PANEL (INLINE CARD, NOT POPUP) */}
+        {showResults && aiResult && (
+          <BandScoreModal
+            task={task}
+            wordCount={currentWordCount}
+            minWords={minWords}
+            aiData={aiResult}
+            prediction={prediction}
+            isPro={isPro}
+            onClose={() => {
+              setShowResults(false);
+            }}
+          />
+        )}
       </div>
-
-      {/* AI MODAL */}
-      {showResults && aiResult && (
-        <BandScoreModal
-          task={task}
-          wordCount={currentWordCount}
-          essay={essay}
-          aiData={aiResult}
-          onClose={() => setShowResults(false)}
-        />
-      )}
-
     </main>
   );
 }
