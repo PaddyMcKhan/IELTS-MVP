@@ -12,6 +12,23 @@ import TaskFeed from '@/components/TaskFeed';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { TASKS } from '@/data/tasks';
 import BandScoreModal from '@/components/BandScoreModal';
+import { createClient } from '@/utils/supabase/server'
+import { cookies } from 'next/headers'
+
+export default async function Page() {
+  const cookieStore = await cookies()
+  const supabase = createClient(cookieStore)
+
+  const { data: todos } = await supabase.from('todos').select()
+
+  return (
+    <ul>
+      {todos?.map((todo) => (
+        <li>{todo}</li>
+      ))}
+    </ul>
+  )
+}
 
 // Default IELTS durations
 function defaultDurationForTask(task: 'task1' | 'task2'): number {
