@@ -1,7 +1,6 @@
-/Users/lordp/IELTS-MVP/node_modules/@next/swc-darwin-x64/next-swc.darwin-x64.node
-
-/Users/lordp/IELTS-MVP/.env.local
-
-/src/generated/prisma
-
-/Users/lordp/IELTS-MVP/.env
+# Env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
