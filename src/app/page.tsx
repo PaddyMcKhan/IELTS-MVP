@@ -1,34 +1,17 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useWritingTasks } from "@/hooks/useWritingTasks";
+import { useSession } from "next-auth/react";
+import { useAutosaveDraft } from "@/hooks/useAutosaveDraft";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import Timer from '@/components/Timer';
 import EssayBox from '@/components/EssayBox';
-import TaskFeed from '@/components/TaskFeed';
 import useLocalStorage from '@/hooks/useLocalStorage';
-import { TASKS } from '@/data/tasks';
 import BandScoreModal from '@/components/BandScoreModal';
-import { createClient } from '@/utils/supabase/server'
-import { cookies } from 'next/headers'
-
-export default async function Page() {
-  const cookieStore = await cookies()
-  const supabase = createClient(cookieStore)
-
-  const { data: todos } = await supabase.from('todos').select()
-
-  return (
-    <ul>
-      {todos?.map((todo) => (
-        <li>{todo}</li>
-      ))}
-    </ul>
-  )
-}
 
 // Default IELTS durations
 function defaultDurationForTask(task: 'task1' | 'task2'): number {
@@ -46,15 +29,41 @@ type Scores = {
   grammar: number;
 };
 
+type AttemptRow = {
+  id: string;
+  user_id: string | null;
+  question_id: string;
+  essay_text: string;
+  score_json: any;
+  created_at: string;
+};
+
 export default function Home() {
+  const { data: session } = useSession();
+  const userId = (session?.user as any)?.id ?? null;
+
   const [mode, setMode] = useState<'academic' | 'general'>('academic');
   const [task, setTask] = useState<'task1' | 'task2'>('task2');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  const selectedTask = useMemo(
-    () => TASKS.find(t => t.id === selectedTaskId) ?? null,
-    [selectedTaskId]
+  // Map UI mode/task to DB task_type (e.g. "task2_academic")
+  const dbTaskType = useMemo(
+    () => `${task}_${mode === "academic" ? "academic" : "general"}`,
+    [task, mode]
   );
+
+  const { tasks, loading: tasksLoading, error: tasksError } = useWritingTasks(
+    dbTaskType
+  );
+
+  const selectedTask = useMemo(() => {
+    if (!tasks || tasks.length === 0) return null;
+    if (selectedTaskId) {
+      const found = tasks.find((t: any) => t.id === selectedTaskId);
+      if (found) return found;
+    }
+    return tasks[0];
+  }, [tasks, selectedTaskId]);
 
   const [duration, setDuration] = useState<number>(defaultDurationForTask(task));
   const [isRunning, setIsRunning] = useState(false);
@@ -72,7 +81,25 @@ export default function Home() {
   const currentWordCount = useMemo(() => countWords(essay), [essay]);
 
   const prompt = selectedTask?.prompt ?? '';
-  const minWords = task === 'task1' ? 150 : 250;
+  const minWords =
+    (selectedTask as any)?.min_words ?? (task === "task1" ? 150 : 250);
+
+  // Ensure we always have a selectedTaskId once tasks load
+  useEffect(() => {
+    if (!selectedTaskId && tasks && tasks.length > 0) {
+      setSelectedTaskId(tasks[0].id);
+    }
+  }, [tasks, selectedTaskId]);
+
+  // 🔁 Cloud autosave hook (Step 9C)
+  const { status: autosaveStatus, lastSavedAt } = useAutosaveDraft({
+    essay,
+    questionId: selectedTaskId,
+    mode,
+    task,
+    enabled: !!userId && !!selectedTaskId,
+    userId,
+  });
 
   // Self-assessment sliders (student prediction)
   const [selfScores, setSelfScores] = useState<Scores>({
@@ -85,7 +112,7 @@ export default function Home() {
   const [predictionLocked, setPredictionLocked] = useState(false);
   const [prediction, setPrediction] = useState<Scores | null>(null);
 
-  // LIVE predicted overall from sliders (always based on selfScores)
+  // LIVE predicted overall from sliders
   const livePredictedOverall = useMemo(() => {
     const avg =
       (selfScores.taskResponse +
@@ -100,6 +127,32 @@ export default function Home() {
   const [aiResult, setAiResult] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
+  // History (Step 8D / 8E)
+  const [attempts, setAttempts] = useState<AttemptRow[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  // Load attempts from /api/attempts (optionally filtered by userId)
+  async function loadAttempts() {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const q = userId ? `?userId=${encodeURIComponent(userId)}` : "";
+      const res = await fetch(`/api/attempts${q}`);
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        setHistoryError(json.error || "Failed to load attempts");
+        return;
+      }
+      setAttempts(json.attempts ?? []);
+    } catch (err) {
+      console.error("Failed to load attempts:", err);
+      setHistoryError("Failed to load attempts");
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
+
   // Before unload warning
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -112,6 +165,52 @@ export default function Home() {
     return () => window.removeEventListener('beforeunload', handler);
   }, [essay]);
 
+  // Initial load of history (re-run if userId changes)
+  useEffect(() => {
+    loadAttempts();
+  }, [userId]);
+
+  // Load cloud draft when a question is selected (Step 9D)
+  useEffect(() => {
+    if (!userId || !selectedTaskId) return;
+
+    let cancelled = false;
+
+    async function fetchDraft() {
+      try {
+        const res = await fetch(
+          `/api/drafts?questionId=${encodeURIComponent(
+            selectedTaskId
+          )}&userId=${encodeURIComponent(userId)}`
+        );
+
+        if (!res.ok) {
+          console.error("Failed to load draft:", res.status);
+          return;
+        }
+
+        const json = await res.json();
+
+        if (cancelled) return;
+        if (!json.draft) {
+          return;
+        }
+
+        // Hydrate editor with server draft
+        setEssay(json.draft.essay as string);
+      } catch (err) {
+        console.error("Error loading draft:", err);
+      }
+    }
+
+    fetchDraft();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, selectedTaskId, setEssay]);
+
+  // Reset all feedback state
   const resetFeedback = () => {
     setAiResult(null);
     setShowResults(false);
@@ -126,7 +225,7 @@ export default function Home() {
     });
   };
 
-  // Handle submit → AI scoring
+  // Handle submit → AI scoring + save attempt
   const handleSubmit = async () => {
     if (currentWordCount < minWords) {
       const proceed = window.confirm(
@@ -137,9 +236,10 @@ export default function Home() {
       if (!proceed) return;
     }
 
-    // Lock prediction for this attempt (if user touched sliders)
-    if (hasPrediction) {
-      setPrediction({ ...selfScores });
+    const predictionPayload = hasPrediction ? { ...selfScores } : null;
+
+    if (predictionPayload) {
+      setPrediction(predictionPayload);
     } else {
       setPrediction(null);
     }
@@ -168,6 +268,29 @@ export default function Home() {
         return;
       }
 
+      const scoreToStore = predictionPayload
+        ? { ...data, prediction: predictionPayload }
+        : data;
+
+      // Save to Supabase (Step 8D/8E)
+      if (selectedTaskId) {
+        try {
+          await fetch("/api/attempts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              questionId: selectedTaskId,
+              essayText: essay,
+              score: scoreToStore,
+              userId: userId ?? null,
+            }),
+          });
+          await loadAttempts();
+        } catch (saveErr) {
+          console.error("Failed to save essay attempt:", saveErr);
+        }
+      }
+
       setAiResult(data);
       setShowResults(true);
     } catch (err) {
@@ -178,7 +301,7 @@ export default function Home() {
     setIsLoading(false);
   };
 
-  // Loading screen
+  // Loading screen while scoring
   if (isLoading) {
     return (
       <main className="min-h-dvh flex items-center justify-center bg-white text-slate-900">
@@ -190,15 +313,40 @@ export default function Home() {
     );
   }
 
+  // Loading screen for tasks
+  if (tasksLoading) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center bg-white text-slate-900">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-slate-600">Loading writing tasks…</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (tasksError || !tasks || tasks.length === 0) {
+    return (
+      <main className="min-h-dvh flex items-center justify-center bg-white text-slate-900">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-red-600">
+            Failed to load writing tasks{tasksError ? `: ${tasksError}` : ""}.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-dvh bg-white text-slate-900 p-6">
       <div className="mx-auto max-w-3xl space-y-6">
 
         <header className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">IELTS Writing Practice</h1>
-          <Link href="https://github.com/" target="_blank" className="text-sm underline">
-            GitHub
-          </Link>
+          <div>
+            <h1 className="text-2xl font-semibold">IELTS Writing Practice</h1>
+            <p className="text-xs text-slate-500 mt-1">
+              Choose a task, start the timer, and get instant AI band scores.
+            </p>
+          </div>
         </header>
 
         {/* CONFIG PANEL */}
@@ -274,12 +422,18 @@ export default function Home() {
 
           {/* TIMER + CONTROLS */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <Timer
-              key={`${mode}-${task}-${duration}-${selectedTaskId}-${resetToken}`}
-              initialSeconds={duration}
-              isRunning={isRunning}
-              onComplete={() => setIsRunning(false)}
-            />
+            <div className="flex flex-col items-start gap-1">
+              <Timer
+                key={`${mode}-${task}-${duration}-${selectedTaskId}-${resetToken}`}
+                initialSeconds={duration}
+                isRunning={isRunning}
+                onComplete={() => setIsRunning(false)}
+              />
+              <p className="text-[11px] text-slate-500">
+                Minimum words for this task: <span className="font-medium">{minWords}</span>
+              </p>
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
               {/* Pro toggle */}
               <label className="flex items-center gap-2 text-xs text-slate-600">
@@ -331,22 +485,68 @@ export default function Home() {
 
         {/* QUESTION + ESSAY */}
         <Card className="p-4 space-y-4">
-          <TaskFeed
-            module={mode}
-            task={task}
-            selectedId={selectedTaskId}
-            onChange={(id) => {
-              setSelectedTaskId(id);
-              setIsRunning(false);
-              setResetToken(t => t + 1);
-              resetFeedback();
-              setEssay('');
-            }}
-          />
+          {/* QUESTION SELECTOR */}
+          <div className="space-y-2">
+            <Label>Question</Label>
+            <Select
+              value={selectedTask?.id ?? ""}
+              onValueChange={(id) => {
+                setSelectedTaskId(id);
+                setIsRunning(false);
+                setResetToken(t => t + 1);
+                resetFeedback();
+                setEssay('');
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choose a question" />
+              </SelectTrigger>
+              <SelectContent>
+                {tasks.map((t: any) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.title ??
+                      t.prompt.slice(0, 60) +
+                        (t.prompt.length > 60 ? "…" : "")}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          {prompt && (
-            <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700">
-              <strong>Question:</strong> {prompt}
+          {/* QUESTION PANEL */}
+          {selectedTask && (
+            <div className="rounded-md bg-slate-50 p-3 text-sm text-slate-700 space-y-3">
+              {/* Diagram / Chart description for Task 1 */}
+              {selectedTask.task_type.startsWith("task1_") &&
+                (selectedTask as any).diagram_alt && (
+                  <div className="rounded-md border border-dashed border-slate-300 bg-white p-3 text-xs text-slate-600">
+                    <strong>Diagram description:</strong>{" "}
+                    {(selectedTask as any).diagram_alt}
+                  </div>
+                )}
+
+              {/* Meta row: module, task, min words, kind */}
+              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-wide text-slate-500">
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-700">
+                  {mode === "academic" ? "Academic" : "General Training"}
+                </span>
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 font-semibold text-slate-700">
+                  {task === "task1"
+                    ? `Task 1 • ${minWords} words`
+                    : `Task 2 • ${minWords} words`}
+                </span>
+                <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">
+                  {selectedTask.task_type.startsWith("task2_")
+                    ? "Essay"
+                    : selectedTask.task_type === "task1_general"
+                      ? "Letter"
+                      : "Chart / Diagram"}
+                </span>
+              </div>
+
+              <div>
+                <strong>Question:</strong> {selectedTask.prompt}
+              </div>
             </div>
           )}
 
@@ -360,8 +560,37 @@ export default function Home() {
             }}
           />
 
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-500" suppressHydrationWarning>
             Current words: {currentWordCount} / minimum {minWords}
+          </p>
+
+          {/* AUTOSAVE STATUS LINE */}
+          <p className="text-xs text-slate-500" suppressHydrationWarning>
+            {!userId && (
+              <>Cloud autosave is off (not logged in). Local backup is still active in this browser.</>
+            )}
+
+            {userId && !selectedTaskId && (
+              <>Select a task to enable cloud autosave.</>
+            )}
+
+            {userId && selectedTaskId && autosaveStatus === "saving" && (
+              <>Saving draft…</>
+            )}
+
+            {userId && selectedTaskId && autosaveStatus === "saved" && lastSavedAt && (
+              <>
+                Saved at{" "}
+                {new Date(lastSavedAt).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </>
+            )}
+
+            {userId && selectedTaskId && autosaveStatus === "error" && (
+              <>Autosave failed — changes are not yet saved in the cloud.</>
+            )}
           </p>
         </Card>
 
@@ -492,7 +721,7 @@ export default function Home() {
           </div>
         </Card>
 
-        {/* RESULTS PANEL (INLINE CARD, NOT POPUP) */}
+        {/* RESULTS PANEL */}
         {showResults && aiResult && (
           <BandScoreModal
             task={task}

@@ -3,7 +3,7 @@
 // This file validates that all pages and layouts export the correct types
 
 import type { AppRoutes, LayoutRoutes, ParamMap, AppRouteHandlerRoutes } from "./routes.js"
-import type { ResolvingMetadata, ResolvingViewport } from "next/types.js"
+import type { NextApiHandler, ResolvingMetadata, ResolvingViewport } from "next/types.js"
 import type { NextRequest } from 'next/server.js'
 
 type AppPageConfig<Route extends AppRoutes = AppRoutes> = {
@@ -46,11 +46,69 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   OPTIONS?: (request: NextRequest, context: { params: Promise<ParamMap[Route]> }) => Promise<Response | void> | Response | void
 }
 
+type ApiRouteConfig = {
+  default: (req: any, res: any) => ReturnType<NextApiHandler>
+  config?: {
+    api?: {
+      bodyParser?: boolean | { sizeLimit?: string }
+      responseLimit?: string | number | boolean
+      externalResolver?: boolean
+    }
+    runtime?: 'edge' | 'experimental-edge' | 'nodejs' | string // necessary unless config is exported as const
+    maxDuration?: number
+  }
+}
+
+
+// Validate ../../../src/app/attempts/[id]/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/attempts/[id]">> = Specific
+  const handler = {} as typeof import("../../../src/app/attempts/[id]/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/attempts/page.tsx
+{
+  type __IsExpected<Specific extends AppPageConfig<"/attempts">> = Specific
+  const handler = {} as typeof import("../../../src/app/attempts/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
 
 // Validate ../../../src/app/page.tsx
 {
   type __IsExpected<Specific extends AppPageConfig<"/">> = Specific
   const handler = {} as typeof import("../../../src/app/page.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/attempts/[id]/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/attempts/[id]">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/attempts/[id]/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/attempts/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/attempts">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/attempts/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
+
+// Validate ../../../src/app/api/drafts/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/drafts">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/drafts/route.js")
   type __Check = __IsExpected<typeof handler>
   // @ts-ignore
   type __Unused = __Check
@@ -65,9 +123,25 @@ type RouteHandlerConfig<Route extends AppRouteHandlerRoutes = AppRouteHandlerRou
   type __Unused = __Check
 }
 
+// Validate ../../../src/app/api/writing-tasks/route.ts
+{
+  type __IsExpected<Specific extends RouteHandlerConfig<"/api/writing-tasks">> = Specific
+  const handler = {} as typeof import("../../../src/app/api/writing-tasks/route.js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
 
 
 
+// Validate ../../../src/pages/api/auth/[...nextauth].ts
+{
+  type __IsExpected<Specific extends ApiRouteConfig> = Specific
+  const handler = {} as typeof import("../../../src/pages/api/auth/[...nextauth].js")
+  type __Check = __IsExpected<typeof handler>
+  // @ts-ignore
+  type __Unused = __Check
+}
 
 // Validate ../../../src/app/layout.tsx
 {
