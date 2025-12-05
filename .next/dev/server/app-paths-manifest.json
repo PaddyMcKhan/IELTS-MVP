@@ -2,5 +2,9 @@
   "/api/attempts/route": "app/api/attempts/route.js",
   "/api/drafts/route": "app/api/drafts/route.js",
   "/api/writing-tasks/route": "app/api/writing-tasks/route.js",
-  "/page": "app/page.js"
+  "/attempts/[id]/page": "app/attempts/[id]/page.js",
+  "/attempts/page": "app/attempts/page.js",
+  "/auth/login/page": "app/auth/login/page.js",
+  "/page": "app/page.js",
+  "/profile/page": "app/profile/page.js"
 }

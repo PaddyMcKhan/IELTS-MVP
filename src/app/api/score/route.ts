@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { createClient } from "@/utils/supabase/server";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
@@ -19,21 +20,90 @@ function pickModel(isPro: boolean) {
 
 export async function POST(req: Request) {
   try {
-    const { essay, task, wordCount, question } = await req.json();
+    const body = await req.json();
 
-    // Detect if this user is requesting pro mode
+    const {
+      essay,
+      task,                // "task1" | "task2" from UI
+      wordCount,
+      question,            // client copy of prompt (fallback only)
+      questionId,          // writing_tasks.id
+      taskType,            // e.g. "task2_academic" (fallback only)
+      minWords: clientMinWords, // min words from client (fallback only)
+    } = body ?? {};
+
+    // Basic validation
+    if (!essay || !task || typeof wordCount !== "number") {
+      return NextResponse.json(
+        { error: "Missing required fields for scoring." },
+        { status: 400 }
+      );
+    }
+
+    // Detect if this user is requesting pro mode (?pro=true)
     const { searchParams } = new URL(req.url);
     const isPro = searchParams.get("pro") === "true";
 
     const model = pickModel(isPro);
 
-    const minWords = task === "task1" ? 150 : 250;
+    // 🔑 Step 11E: fetch canonical task data from Supabase
+    const supabase = createClient();
+
+    let dbTask: any = null;
+
+    if (questionId) {
+      const { data, error } = await supabase
+        .from("writing_tasks")
+        .select("id, prompt, min_words, task_type")
+        .eq("id", questionId)
+        .single();
+
+      if (!error && data) {
+        dbTask = data;
+      } else {
+        console.warn("Score API: failed to load writing_tasks row", {
+          questionId,
+          error,
+        });
+      }
+    }
+
+    // Canonical values (DB → client → defaults)
+    const canonicalPrompt: string =
+      dbTask?.prompt ??
+      question ??
+      "Unknown IELTS Writing task prompt (no prompt supplied).";
+
+    const canonicalTaskType: string =
+      dbTask?.task_type ??
+      taskType ??
+      (task === "task1" ? "task1_academic" : "task2_academic");
+
+    const canonicalMinWords: number =
+      typeof dbTask?.min_words === "number"
+        ? dbTask.min_words
+        : typeof clientMinWords === "number"
+        ? clientMinWords
+        : task === "task1"
+        ? 150
+        : 250;
+
+    const taskNumber = task === "task1" ? "1" : "2";
+    const moduleLabel = canonicalTaskType.endsWith("_general")
+      ? "General Training"
+      : "Academic";
 
     const prompt = `
 You are an official IELTS Writing Examiner.
 
-Evaluate the following Task ${task === "task1" ? "1" : "2"} essay using the 
-IELTS Academic Writing band descriptors.
+Evaluate the following Writing Task ${taskNumber} (${moduleLabel}) essay
+using the official IELTS Writing band descriptors for Task ${taskNumber}.
+
+Task metadata:
+- taskId: ${questionId ?? "unknown"}
+- taskType: ${canonicalTaskType}
+- module: ${moduleLabel}
+- minWords: ${canonicalMinWords}
 
 You MUST return ONLY valid JSON in this exact shape, with no markdown and no comments:
 
@@ -56,13 +126,13 @@ You MUST return ONLY valid JSON in this exact shape, with no markdown and no com
 Round all band scores to the nearest 0.5.
 
 # Essay Question:
-${question}
+${canonicalPrompt}
 
 # Candidate Essay:
 ${essay}
 
 # Word Count: ${wordCount}
-# Min Required: ${minWords}
+# Min Required: ${canonicalMinWords}
     `.trim();
 
     const completion = await client.responses.create({
@@ -78,7 +148,9 @@ ${essay}
       const firstNewline = raw.indexOf("\n");
       const lastFence = raw.lastIndexOf("```");
       if (firstNewline !== -1) {
-        raw = raw.slice(firstNewline + 1, lastFence === -1 ? undefined : lastFence).trim();
+        raw = raw
+          .slice(firstNewline + 1, lastFence === -1 ? undefined : lastFence)
+          .trim();
       }
     }
 

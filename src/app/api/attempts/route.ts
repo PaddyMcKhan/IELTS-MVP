@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Match the Supabase Next.js quickstart env naming.
+// Supabase setup
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
   process.env.SUPABASE_URL ??
@@ -14,75 +14,106 @@ const supabaseKey =
   process.env.SUPABASE_ANON_KEY ??
   "";
 
-const supabase =
-  supabaseUrl && supabaseKey
-    ? createClient(supabaseUrl, supabaseKey)
-    : null;
+if (!supabaseUrl || !supabaseKey) {
+  console.error("[/api/attempts] Missing Supabase env variables");
+}
 
-// ✅ POST: save a single attempt
-export async function POST(req: Request) {
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+// POST /api/attempts
+export async function POST(req: NextRequest) {
   try {
-    if (!supabase) {
-      console.error("Supabase client is not configured");
-      return NextResponse.json(
-        { error: "Supabase client is not configured" },
-        { status: 500 }
-      );
+    const body = await req.json();
+
+    const {
+      questionId,
+      questionText,
+      module,
+      task,
+      essay,        // legacy text, if used
+      essayText,    // main essay content
+      wordCount,
+      isPro,
+      userId,       // should come from client when logged in
+      scoreJson,    // full scoring JSON from AI examiner
+      coherence,
+      lexical,
+      grammar,
+      taskResponse,
+      overallBand,  // optional, may or may not be passed
+    } = body;
+
+    // Try to extract overall band from scoreJson if not explicitly given
+    let derivedOverall: number | null = null;
+    if (typeof overallBand === "number") {
+      derivedOverall = overallBand;
+    } else if (
+      scoreJson &&
+      typeof scoreJson === "object" &&
+      typeof scoreJson.overall === "number"
+    ) {
+      derivedOverall = scoreJson.overall;
     }
 
-    const { questionId, essayText, score, userId } = await req.json();
+    const payload: any = {
+      // numeric scores (nullable is fine)
+      coherence: typeof coherence === "number" ? coherence : null,
+      lexical: typeof lexical === "number" ? lexical : null,
+      grammar: typeof grammar === "number" ? grammar : null,
+      overall_band: derivedOverall,
+      task_response:
+        typeof taskResponse === "number" ? taskResponse : null,
 
-    if (!questionId || !essayText) {
-      return NextResponse.json(
-        { error: "Missing required fields" },
-        { status: 400 }
-      );
-    }
+      // metadata
+      is_pro: !!isPro,
+      module: module ?? null,
+      task: task ?? null,
+      question_id: questionId ?? null,
+      question_text: questionText ?? null,
+      user_id: userId ?? null,
+      word_count:
+        typeof wordCount === "number" ? wordCount : null,
 
-    const { error } = await supabase.from("essay_attempts").insert({
-      user_id: userId ?? null,       // currently this will be null until we trust a real userId
-      question_id: questionId,
-      essay_text: essayText,
-      score_json: score,
-    });
+      // essay content
+      essay: essay ?? null,
+      essay_text: essayText ?? essay ?? null,
+
+      // ✅ IMPORTANT: store as real JSON object, not string
+      score_json: scoreJson ?? null,
+    };
+
+    const { error } = await supabase
+      .from("essay_attempts")
+      .insert(payload);
 
     if (error) {
       console.error("Supabase save error:", error);
       return NextResponse.json(
-        { error: "Failed to save essay attempt" },
+        { ok: false, error: error.message ?? "Supabase error" },
         { status: 500 }
       );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true });
   } catch (err) {
     console.error("Unexpected error in POST /api/attempts:", err);
     return NextResponse.json(
-      { error: "Unexpected error" },
+      { ok: false, error: "Unexpected error" },
       { status: 500 }
     );
   }
 }
 
-// ✅ GET: fetch recent attempts (optionally filtered by userId)
-export async function GET(req: Request) {
+// GET /api/attempts?userId=...
+export async function GET(req: NextRequest) {
   try {
-    if (!supabase) {
-      console.error("Supabase client is not configured");
-      return NextResponse.json(
-        { error: "Supabase client is not configured" },
-        { status: 500 }
-      );
-    }
-
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
 
     let query = supabase
       .from("essay_attempts")
       .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
+      .order("created_at", { ascending: false });
 
     if (userId) {
       query = query.eq("user_id", userId);
@@ -91,7 +122,7 @@ export async function GET(req: Request) {
     const { data, error } = await query;
 
     if (error) {
-      console.error("Supabase fetch error:", error);
+      console.error("Error loading attempts:", error);
       return NextResponse.json(
         { error: "Failed to load attempts" },
         { status: 500 }

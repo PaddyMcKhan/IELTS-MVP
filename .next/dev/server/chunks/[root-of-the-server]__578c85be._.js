@@ -83,58 +83,43 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__
 ;
 async function POST(req) {
     try {
-        let body;
-        try {
-            body = await req.json();
-        } catch  {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Invalid JSON body"
-            }, {
-                status: 400
-            });
-        }
+        const body = await req.json();
         const { userId, questionId, mode, task, essay } = body;
-        if (!userId) {
+        if (!userId || typeof questionId === "undefined") {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Missing userId (must be logged in to autosave)"
+                message: "Missing userId or questionId"
             }, {
                 status: 400
             });
         }
-        if (!questionId || !mode || !task) {
+        const qid = parseInt(String(questionId), 10);
+        if (Number.isNaN(qid)) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Missing required fields: questionId, mode, task"
+                message: "Invalid questionId"
             }, {
                 status: 400
             });
         }
         const rows = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].$queryRaw`
       insert into essay_drafts (user_id, question_id, mode, task, essay_text)
-      values (${userId}, ${questionId}, ${mode}, ${task}, ${essay})
-      on conflict (user_id, question_id)
-      do update set
-        essay_text = excluded.essay_text,
-        mode       = excluded.mode,
-        task       = excluded.task,
-        updated_at = now()
-      returning id, updated_at
+      values (${userId}::uuid, ${qid}::int, ${mode}, ${task}, ${essay})
+      on conflict (user_id, question_id) do update
+      set essay_text = excluded.essay_text,
+          mode = excluded.mode,
+          task = excluded.task,
+          updated_at = now()
+      returning id, updated_at;
     `;
-        const row = rows[0];
-        if (!row) {
-            return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Failed to save draft"
-            }, {
-                status: 500
-            });
-        }
+        const [row] = rows;
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             id: row.id,
             updatedAt: row.updated_at.toISOString()
         });
-    } catch (err) {
-        console.error("Unexpected error in POST /api/drafts:", err);
+    } catch (error) {
+        console.error("Unexpected error in POST /api/drafts:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: "Internal server error"
+            message: "Unexpected error",
+            details: String(error?.message ?? error)
         }, {
             status: 500
         });
@@ -142,50 +127,51 @@ async function POST(req) {
 }
 async function GET(req) {
     try {
-        const url = new URL(req.url);
-        const questionId = url.searchParams.get("questionId");
-        const userId = url.searchParams.get("userId");
-        if (!userId) {
+        const { searchParams } = new URL(req.url);
+        const userId = searchParams.get("userId");
+        const questionIdRaw = searchParams.get("questionId");
+        if (!userId || !questionIdRaw) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Missing userId in query string"
+                message: "Missing userId or questionId"
             }, {
                 status: 400
             });
         }
-        if (!questionId) {
+        const questionId = parseInt(questionIdRaw, 10);
+        if (Number.isNaN(questionId)) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-                error: "Missing questionId in query string"
+                message: "Invalid questionId"
             }, {
                 status: 400
             });
         }
         const rows = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$route$5d$__$28$ecmascript$29$__["prisma"].$queryRaw`
-      select id, question_id, mode, task, essay_text, updated_at
+      select id, question_id, essay_text, updated_at
       from essay_drafts
-      where user_id = ${userId}
-        and question_id = ${questionId}
-      limit 1
+      where user_id = ${userId}::uuid
+        and question_id = ${questionId}::int
+      order by updated_at desc
+      limit 1;
     `;
-        const row = rows[0];
-        if (!row) {
+        if (!rows.length) {
             return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
                 draft: null
             });
         }
+        const [row] = rows;
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
             draft: {
                 id: row.id,
                 questionId: row.question_id,
-                mode: row.mode,
-                task: row.task,
                 essay: row.essay_text,
                 updatedAt: row.updated_at.toISOString()
             }
         });
-    } catch (err) {
-        console.error("Unexpected error in GET /api/drafts:", err);
+    } catch (error) {
+        console.error("Unexpected error in GET /api/drafts:", error);
         return __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$server$2e$js__$5b$app$2d$route$5d$__$28$ecmascript$29$__["NextResponse"].json({
-            error: "Internal server error"
+            message: "Unexpected error",
+            details: String(error?.message ?? error)
         }, {
             status: 500
         });

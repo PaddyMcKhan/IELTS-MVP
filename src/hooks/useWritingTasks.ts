@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-export type WritingTask = {
+export type WritingTaskRow = {
   id: string;
   task_type: string;
   title: string | null;
@@ -10,36 +10,51 @@ export type WritingTask = {
   diagram_alt: string | null;
   diagram_image_url: string | null;
   min_words: number;
-  is_active?: boolean;
-  created_at?: string;
+  is_active: boolean;
 };
 
-export function useWritingTasks(taskType?: string) {
-  const [tasks, setTasks] = useState<WritingTask[]>([]);
-  const [loading, setLoading] = useState(true);
+type UseWritingTasksResult = {
+  tasks: WritingTaskRow[];
+  loading: boolean;
+  error: string | null;
+};
+
+export function useWritingTasks(taskType: string): UseWritingTasksResult {
+  const [tasks, setTasks] = useState<WritingTaskRow[]>([]);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!taskType) return;
+
     let cancelled = false;
 
     async function load() {
       setLoading(true);
       setError(null);
+
       try {
-        const url = taskType
-          ? `/api/writing-tasks?task_type=${encodeURIComponent(taskType)}`
-          : "/api/writing-tasks";
-
-        const res = await fetch(url);
-        if (!res.ok) throw new Error("Failed to fetch tasks");
-
+        const res = await fetch(
+          `/api/writing-tasks?task_type=${encodeURIComponent(taskType)}`
+        );
         const json = await res.json();
-        if (!cancelled) {
-          setTasks(json.tasks ?? []);
+
+        if (!res.ok || json.error) {
+          if (!cancelled) {
+            setError(json.error || "Failed to load writing tasks");
+            setTasks([]);
+          }
+          return;
         }
-      } catch (err: any) {
+
         if (!cancelled) {
-          setError(err.message ?? "Error loading tasks");
+          setTasks((json.tasks ?? []) as WritingTaskRow[]);
+        }
+      } catch (err) {
+        console.error("Error loading writing tasks:", err);
+        if (!cancelled) {
+          setError("Failed to load writing tasks");
+          setTasks([]);
         }
       } finally {
         if (!cancelled) {

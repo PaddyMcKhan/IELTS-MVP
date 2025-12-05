@@ -2,12 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useWritingTasks } from "@/hooks/useWritingTasks";
-import { useSession } from "next-auth/react";
+import { useSupabaseSession } from "@/components/SupabaseSessionProvider";
 import { useAutosaveDraft } from "@/hooks/useAutosaveDraft";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import Link from "next/link";
 import Timer from '@/components/Timer';
 import EssayBox from '@/components/EssayBox';
 import useLocalStorage from '@/hooks/useLocalStorage';
@@ -39,7 +40,7 @@ type AttemptRow = {
 };
 
 export default function Home() {
-  const { data: session } = useSession();
+  const { session } = useSupabaseSession();
   const userId = (session?.user as any)?.id ?? null;
 
   const [mode, setMode] = useState<'academic' | 'general'>('academic');
@@ -81,8 +82,7 @@ export default function Home() {
   const currentWordCount = useMemo(() => countWords(essay), [essay]);
 
   const prompt = selectedTask?.prompt ?? '';
-  const minWords =
-    (selectedTask as any)?.min_words ?? (task === "task1" ? 150 : 250);
+  const minWords = selectedTask?.min_words ?? (task === "task1" ? 150 : 250);
 
   // Ensure we always have a selectedTaskId once tasks load
   useEffect(() => {
@@ -132,7 +132,53 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
+  // Welcome-back modal (Step 12C)
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+
   // Load attempts from /api/attempts (optionally filtered by userId)
+  const progressSummary = useMemo(() => {
+    if (!attempts || attempts.length === 0) {
+      return null;
+    }
+
+    const overallScores: number[] = [];
+
+    for (const attempt of attempts) {
+      const overall = (attempt as any)?.score_json?.overall;
+      if (typeof overall === "number") {
+        overallScores.push(overall);
+      }
+    }
+
+    const totalAttempts = attempts.length;
+    const scoredAttempts = overallScores.length;
+
+    if (scoredAttempts === 0) {
+      return {
+        totalAttempts,
+        scoredAttempts,
+        bestOverall: null as number | null,
+        averageOverall: null as number | null,
+        lastOverall: null as number | null,
+      };
+    }
+
+    const bestOverall = Math.max(...overallScores);
+    const averageOverall =
+      overallScores.reduce((sum, score) => sum + score, 0) / scoredAttempts;
+
+    // Assuming newest attempt is first – use that as “last”
+    const lastOverall = overallScores[0];
+
+    return {
+      totalAttempts,
+      scoredAttempts,
+      bestOverall,
+      averageOverall,
+      lastOverall,
+    };
+  }, [attempts]);
+
   async function loadAttempts() {
     setHistoryLoading(true);
     setHistoryError(null);
@@ -169,6 +215,24 @@ export default function Home() {
   useEffect(() => {
     loadAttempts();
   }, [userId]);
+
+  // Welcome-back progress popup (Step 12C)
+  useEffect(() => {
+    if (!userId) return;
+    if (!progressSummary) return;         // need stats to show
+    if (historyLoading || historyError) return;
+
+    try {
+      const key = `ielts:welcomeSeen:${userId}`;
+      const seen = window.localStorage.getItem(key);
+      if (seen === "1") return;
+
+      setShowWelcomeModal(true);
+      window.localStorage.setItem(key, "1");
+    } catch (err) {
+      console.error("Welcome modal localStorage error:", err);
+    }
+  }, [userId, progressSummary, historyLoading, historyError]);
 
   // Load cloud draft when a question is selected (Step 9D)
   useEffect(() => {
@@ -227,10 +291,15 @@ export default function Home() {
 
   // Handle submit → AI scoring + save attempt
   const handleSubmit = async () => {
+    // Step 11D: make sure a DB question is selected
+    if (!selectedTaskId || !selectedTask) {
+      alert("Please choose a question before submitting your essay.");
+      return;
+    }
+
     if (currentWordCount < minWords) {
       const proceed = window.confirm(
-        `You have written ${currentWordCount} words, but the minimum for ${
-          task === 'task1' ? 'Task 1' : 'Task 2'
+        `You have written ${currentWordCount} words, but the minimum for ${task === 'task1' ? 'Task 1' : 'Task 2'
         } is ${minWords}. Submitting fewer words may reduce your Task Response score.\n\nProceed anyway?`
       );
       if (!proceed) return;
@@ -255,13 +324,19 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           essay,
-          task,
+          task,                     // "task1" or "task2" (UI level)
           wordCount: currentWordCount,
           question: prompt,
+
+          // 🔑 Step 11D wiring into DB world
+          questionId: selectedTaskId,        // writing_tasks.id
+          taskType: selectedTask?.task_type, // e.g. "task2_academic"
+          minWords,                          // DB min_words (or fallback)
         }),
       });
 
       const data = await res.json();
+
       if (data.error) {
         alert("Scoring failed: " + data.error);
         setIsLoading(false);
@@ -272,19 +347,47 @@ export default function Home() {
         ? { ...data, prediction: predictionPayload }
         : data;
 
-      // Save to Supabase (Step 8D/8E)
+      // Save to Supabase (Step 8D/8E + schema update patch)
       if (selectedTaskId) {
         try {
+          const {
+            taskResponse,
+            coherence,
+            lexical,
+            grammar,
+            overall,
+          } = data;
+
           await fetch("/api/attempts", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              questionId: selectedTaskId,
-              essayText: essay,
-              score: scoreToStore,
+              // high-level context
+              module: mode,                 // "academic" | "general"
+              task,                         // "task1" | "task2"
+
+              // question metadata
+              questionId: selectedTaskId,   // writing_tasks.id
+              questionText: prompt,         // full prompt text
+
+              // essay content
+              essay,                        // legacy field (ok if server ignores)
+              essayText: essay,             // main essay column
+              wordCount: currentWordCount,
+
+              // scoring + model info
+              isPro,
               userId: userId ?? null,
+              scoreJson: scoreToStore,      // full JSON for score_json column
+              coherence,
+              lexical,
+              grammar,
+              taskResponse,
+              overallBand:
+                typeof overall === "number" ? overall : undefined,
             }),
           });
+
           await loadAttempts();
         } catch (saveErr) {
           console.error("Failed to save essay attempt:", saveErr);
@@ -293,6 +396,7 @@ export default function Home() {
 
       setAiResult(data);
       setShowResults(true);
+
     } catch (err) {
       alert("Error scoring essay");
       console.error(err);
@@ -324,30 +428,120 @@ export default function Home() {
     );
   }
 
-  if (tasksError || !tasks || tasks.length === 0) {
+  if (tasksError) {
     return (
       <main className="min-h-dvh flex items-center justify-center bg-white text-slate-900">
         <div className="text-center space-y-2">
           <p className="text-sm text-red-600">
-            Failed to load writing tasks{tasksError ? `: ${tasksError}` : ""}.
+            Failed to load writing tasks: {tasksError}
           </p>
         </div>
       </main>
     );
   }
 
-  return (
-    <main className="min-h-dvh bg-white text-slate-900 p-6">
-      <div className="mx-auto max-w-3xl space-y-6">
+    return (
+      <main className="min-h-dvh bg-white text-slate-900 p-6">
+        {/* Welcome-back progress popup (Step 12C) */}
+        {showWelcomeModal && progressSummary && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/40">
+            <Card className="w-full max-w-md mx-4 p-6 space-y-4 bg-white shadow-xl rounded-2xl">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">Welcome back 👋</h2>
+                  <p className="text-xs text-slate-500 mt-1">
+                    Here&apos;s a quick snapshot of your IELTS writing progress.
+                  </p>
+                </div>
+                <button
+                  aria-label="Close"
+                  className="text-slate-400 hover:text-slate-600 text-sm"
+                  onClick={() => setShowWelcomeModal(false)}
+                >
+                  ✕
+                </button>
+              </div>
 
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold">IELTS Writing Practice</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              Choose a task, start the timer, and get instant AI band scores.
-            </p>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">
+                    Total attempts
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {progressSummary.totalAttempts}
+                  </p>
+                </div>
+
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">
+                    Scored attempts
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {progressSummary.scoredAttempts}
+                  </p>
+                </div>
+
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">
+                    Best overall band
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {progressSummary.bestOverall !== null
+                      ? progressSummary.bestOverall.toFixed(1)
+                      : "—"}
+                  </p>
+                </div>
+
+                <div className="rounded-md bg-slate-50 p-3">
+                  <p className="text-[10px] uppercase text-slate-500">
+                    Last attempt (overall)
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    {progressSummary.lastOverall !== null
+                      ? progressSummary.lastOverall.toFixed(1)
+                      : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex justify-between gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowWelcomeModal(false)}
+                >
+                  Close
+                </Button>
+                <Button size="sm" asChild>
+                  <Link href="/progress">
+                    Open full dashboard →
+                  </Link>
+                </Button>
+              </div>
+            </Card>
           </div>
-        </header>
+        )}
+
+        <div className="mx-auto max-w-3xl space-y-6 p-6">
+          <header className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-semibold">IELTS Writing Practice</h1>
+              <p className="text-xs text-slate-500 mt-1">
+                Choose a task, start the timer, and get instant AI band scores.
+              </p>
+            </div>
+          </header>
+
+        {userId && (
+          <div className="flex justify-end">
+            <Link
+              href="/progress"
+              className="text-xs text-slate-500 underline-offset-2 hover:underline"
+            >
+              View your progress →
+            </Link>
+          </div>
+        )}
 
         {/* CONFIG PANEL */}
         <Card className="p-4 space-y-4">
@@ -506,7 +700,7 @@ export default function Home() {
                   <SelectItem key={t.id} value={t.id}>
                     {t.title ??
                       t.prompt.slice(0, 60) +
-                        (t.prompt.length > 60 ? "…" : "")}
+                      (t.prompt.length > 60 ? "…" : "")}
                   </SelectItem>
                 ))}
               </SelectContent>

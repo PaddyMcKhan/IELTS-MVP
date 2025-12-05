@@ -208,10 +208,11 @@ var __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$tasks$2e$ts__
 ;
 async function AttemptDetailPage({ params }) {
     const { id } = await params;
+    // NOTE: id is stored as text in Supabase, so we DON'T cast to ::uuid
     const rows = await __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$lib$2f$prisma$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["prisma"].$queryRaw`
     select id, user_id, question_id, essay_text, score_json, created_at
     from essay_attempts
-    where id = ${id}::uuid
+    where id = ${id}
     limit 1
   `;
     const attempt = rows[0];
@@ -219,18 +220,17 @@ async function AttemptDetailPage({ params }) {
         (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$components$2f$navigation$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["notFound"])();
     }
     const question = __TURBOPACK__imported__module__$5b$project$5d2f$src$2f$data$2f$tasks$2e$ts__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["TASKS"].find((t)=>t.id === attempt.question_id);
-    const createdAt = new Date(attempt.created_at);
-    // AI score JSON (typed loosely)
+    const createdAt = attempt.created_at instanceof Date ? attempt.created_at : new Date(attempt.created_at);
+    // ---- Interpret score_json nicely ----
     const score = attempt.score_json;
     const overall = typeof score?.overall === "number" ? score.overall : null;
     const grammar = typeof score?.grammar === "number" ? score.grammar : null;
     const lexical = typeof score?.lexical === "number" ? score.lexical : null;
     const coherence = typeof score?.coherence === "number" ? score.coherence : null;
     const taskResponse = typeof score?.taskResponse === "number" ? score.taskResponse : null;
-    const modeUsed = typeof score?.modeUsed === "string" ? score.modeUsed : undefined;
     const comments = score?.comments ?? {};
     const hasBandData = overall !== null || grammar !== null || lexical !== null || coherence !== null || taskResponse !== null;
-    // Prediction vs AI (from stored sliders)
+    // ---- Prediction (from sliders) inside score_json.prediction ----
     const prediction = score?.prediction;
     const pTaskResponse = typeof prediction?.taskResponse === "number" ? prediction.taskResponse : null;
     const pCoherence = typeof prediction?.coherence === "number" ? prediction.coherence : null;
@@ -239,7 +239,8 @@ async function AttemptDetailPage({ params }) {
     let predictedOverall = null;
     if (pTaskResponse !== null && pCoherence !== null && pLexical !== null && pGrammar !== null) {
         const avg = (pTaskResponse + pCoherence + pLexical + pGrammar) / 4;
-        predictedOverall = Math.round(avg * 2) / 2; // round to .5
+        // round to .5 like on the main page
+        predictedOverall = Math.round(avg * 2) / 2;
     }
     const hasPrediction = predictedOverall !== null || pTaskResponse !== null || pCoherence !== null || pLexical !== null || pGrammar !== null;
     return /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("main", {
@@ -257,21 +258,21 @@ async function AttemptDetailPage({ params }) {
                                     children: "Attempt details"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 99,
+                                    lineNumber: 124,
                                     columnNumber: 13
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "text-xs text-slate-500 mt-1",
+                                    className: "mt-1 text-xs text-slate-500",
                                     children: "Review your essay and AI feedback for this attempt."
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 100,
+                                    lineNumber: 125,
                                     columnNumber: 13
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 98,
+                            lineNumber: 123,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$client$2f$app$2d$dir$2f$link$2e$react$2d$server$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["default"], {
@@ -280,13 +281,13 @@ async function AttemptDetailPage({ params }) {
                             children: "← Back to attempts"
                         }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 104,
+                            lineNumber: 129,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                    lineNumber: 97,
+                    lineNumber: 122,
                     columnNumber: 9
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -300,7 +301,7 @@ async function AttemptDetailPage({ params }) {
                                     children: "Attempt ID:"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 115,
+                                    lineNumber: 140,
                                     columnNumber: 13
                                 }, this),
                                 " ",
@@ -308,10 +309,10 @@ async function AttemptDetailPage({ params }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 114,
+                            lineNumber: 139,
                             columnNumber: 11
                         }, this),
-                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                        attempt.question_id && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                             className: "text-slate-600",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -319,16 +320,16 @@ async function AttemptDetailPage({ params }) {
                                     children: "Question ID:"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 118,
-                                    columnNumber: 13
+                                    lineNumber: 145,
+                                    columnNumber: 15
                                 }, this),
                                 " ",
                                 attempt.question_id
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 117,
-                            columnNumber: 11
+                            lineNumber: 144,
+                            columnNumber: 13
                         }, this),
                         question && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(__TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["Fragment"], {
                             children: [
@@ -340,7 +341,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Module:"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 124,
+                                            lineNumber: 153,
                                             columnNumber: 17
                                         }, this),
                                         " ",
@@ -348,7 +349,7 @@ async function AttemptDetailPage({ params }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 123,
+                                    lineNumber: 152,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -359,7 +360,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Task:"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 128,
+                                            lineNumber: 157,
                                             columnNumber: 17
                                         }, this),
                                         " ",
@@ -367,7 +368,7 @@ async function AttemptDetailPage({ params }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 127,
+                                    lineNumber: 156,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -378,7 +379,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Question prompt:"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 132,
+                                            lineNumber: 161,
                                             columnNumber: 17
                                         }, this),
                                         " ",
@@ -386,7 +387,7 @@ async function AttemptDetailPage({ params }) {
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 131,
+                                    lineNumber: 160,
                                     columnNumber: 15
                                 }, this)
                             ]
@@ -399,7 +400,7 @@ async function AttemptDetailPage({ params }) {
                                     children: "Created at:"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 138,
+                                    lineNumber: 168,
                                     columnNumber: 13
                                 }, this),
                                 " ",
@@ -407,13 +408,13 @@ async function AttemptDetailPage({ params }) {
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 137,
+                            lineNumber: 167,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                    lineNumber: 113,
+                    lineNumber: 138,
                     columnNumber: 9
                 }, this),
                 hasBandData && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -421,79 +422,59 @@ async function AttemptDetailPage({ params }) {
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "flex items-center justify-between",
-                            children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    children: [
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
-                                            className: "text-lg font-semibold",
-                                            children: "AI band scores"
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 148,
-                                            columnNumber: 17
-                                        }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "text-xs text-slate-500",
-                                            children: "These scores come from the AI examiner for this attempt."
-                                        }, void 0, false, {
-                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 149,
-                                            columnNumber: 17
-                                        }, this)
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 147,
-                                    columnNumber: 15
-                                }, this),
-                                modeUsed && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                    className: "rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600",
-                                    children: [
-                                        "Model: ",
-                                        modeUsed
-                                    ]
-                                }, void 0, true, {
-                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 154,
-                                    columnNumber: 17
-                                }, this)
-                            ]
-                        }, void 0, true, {
+                            children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                                children: [
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
+                                        className: "text-lg font-semibold",
+                                        children: "AI band scores"
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                        lineNumber: 178,
+                                        columnNumber: 17
+                                    }, this),
+                                    /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                        className: "mt-1 text-xs text-slate-500",
+                                        children: "These scores come from the AI examiner for this attempt."
+                                    }, void 0, false, {
+                                        fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                        lineNumber: 179,
+                                        columnNumber: 17
+                                    }, this)
+                                ]
+                            }, void 0, true, {
+                                fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                lineNumber: 177,
+                                columnNumber: 15
+                            }, this)
+                        }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 146,
+                            lineNumber: 176,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "rounded-lg border border-slate-200 bg-slate-50 p-3 flex flex-col justify-between",
+                            className: "rounded-lg border border-slate-200 bg-slate-50 p-4",
                             children: [
-                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "flex items-baseline gap-2",
-                                    children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "text-xs uppercase text-slate-500",
-                                        children: "Overall band"
-                                    }, void 0, false, {
-                                        fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                        lineNumber: 163,
-                                        columnNumber: 17
-                                    }, this)
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                    className: "text-xs font-semibold uppercase text-slate-500",
+                                    children: "Overall band"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 162,
+                                    lineNumber: 187,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                                     className: "mt-2 flex items-baseline gap-2",
                                     children: /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
-                                        className: "text-3xl font-semibold",
+                                        className: "text-4xl font-bold",
                                         children: overall !== null ? overall.toFixed(1) : "—"
                                     }, void 0, false, {
                                         fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                        lineNumber: 168,
+                                        lineNumber: 191,
                                         columnNumber: 17
                                     }, this)
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 167,
+                                    lineNumber: 190,
                                     columnNumber: 15
                                 }, this),
                                 comments.overview && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -501,13 +482,13 @@ async function AttemptDetailPage({ params }) {
                                     children: comments.overview
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 173,
+                                    lineNumber: 196,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 161,
+                            lineNumber: 186,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -521,7 +502,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Task response"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 183,
+                                            lineNumber: 206,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -529,7 +510,7 @@ async function AttemptDetailPage({ params }) {
                                             children: taskResponse !== null ? taskResponse.toFixed(1) : "—"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 186,
+                                            lineNumber: 209,
                                             columnNumber: 17
                                         }, this),
                                         comments.taskResponse && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -537,13 +518,13 @@ async function AttemptDetailPage({ params }) {
                                             children: comments.taskResponse
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 190,
+                                            lineNumber: 215,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 182,
+                                    lineNumber: 205,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -554,7 +535,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Coherence & cohesion"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 198,
+                                            lineNumber: 223,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -562,7 +543,7 @@ async function AttemptDetailPage({ params }) {
                                             children: coherence !== null ? coherence.toFixed(1) : "—"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 201,
+                                            lineNumber: 226,
                                             columnNumber: 17
                                         }, this),
                                         comments.coherence && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -570,13 +551,13 @@ async function AttemptDetailPage({ params }) {
                                             children: comments.coherence
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 205,
+                                            lineNumber: 230,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 197,
+                                    lineNumber: 222,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -587,7 +568,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Lexical resource"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 213,
+                                            lineNumber: 238,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -595,7 +576,7 @@ async function AttemptDetailPage({ params }) {
                                             children: lexical !== null ? lexical.toFixed(1) : "—"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 216,
+                                            lineNumber: 241,
                                             columnNumber: 17
                                         }, this),
                                         comments.lexical && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -603,13 +584,13 @@ async function AttemptDetailPage({ params }) {
                                             children: comments.lexical
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 220,
+                                            lineNumber: 245,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 212,
+                                    lineNumber: 237,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
@@ -620,7 +601,7 @@ async function AttemptDetailPage({ params }) {
                                             children: "Grammar range & accuracy"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 228,
+                                            lineNumber: 253,
                                             columnNumber: 17
                                         }, this),
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -628,7 +609,7 @@ async function AttemptDetailPage({ params }) {
                                             children: grammar !== null ? grammar.toFixed(1) : "—"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 231,
+                                            lineNumber: 256,
                                             columnNumber: 17
                                         }, this),
                                         comments.grammar && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -636,49 +617,49 @@ async function AttemptDetailPage({ params }) {
                                             children: comments.grammar
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 235,
+                                            lineNumber: 260,
                                             columnNumber: 19
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 227,
+                                    lineNumber: 252,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 180,
+                            lineNumber: 203,
                             columnNumber: 13
                         }, this),
                         comments.advice && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
                             className: "rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                    className: "font-semibold text-xs uppercase mb-1",
+                                    className: "mb-1 font-semibold uppercase text-amber-800",
                                     children: "Overall advice"
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 244,
+                                    lineNumber: 270,
                                     columnNumber: 17
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                     children: comments.advice
                                 }, void 0, false, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 247,
+                                    lineNumber: 273,
                                     columnNumber: 17
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 243,
+                            lineNumber: 269,
                             columnNumber: 15
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                    lineNumber: 145,
+                    lineNumber: 175,
                     columnNumber: 11
                 }, this),
                 hasPrediction && hasBandData && /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
@@ -689,7 +670,7 @@ async function AttemptDetailPage({ params }) {
                             children: "Prediction vs AI"
                         }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 256,
+                            lineNumber: 282,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
@@ -697,194 +678,153 @@ async function AttemptDetailPage({ params }) {
                             children: "How your self-assessment compares with the AI examiner for this attempt."
                         }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 257,
+                            lineNumber: 283,
                             columnNumber: 13
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "grid gap-3 md:grid-cols-2",
+                            className: "grid gap-4 md:grid-cols-2 text-sm",
                             children: [
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "rounded-lg border border-slate-200 bg-slate-50 p-3",
+                                    className: "rounded-lg border border-slate-200 bg-slate-50 p-4",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
                                             className: "text-xs uppercase text-slate-500",
-                                            children: "Overall band"
+                                            children: "Your predicted overall band"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 264,
+                                            lineNumber: 290,
                                             columnNumber: 17
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "mt-2 flex items-baseline gap-6",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-[11px] uppercase text-slate-500",
-                                                            children: "Your prediction"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                            lineNumber: 269,
-                                                            columnNumber: 21
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-2xl font-semibold",
-                                                            children: predictedOverall !== null ? predictedOverall.toFixed(1) : "—"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                            lineNumber: 272,
-                                                            columnNumber: 21
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 268,
-                                                    columnNumber: 19
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                                    children: [
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-[11px] uppercase text-slate-500",
-                                                            children: "AI score"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                            lineNumber: 279,
-                                                            columnNumber: 21
-                                                        }, this),
-                                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                                            className: "text-2xl font-semibold",
-                                                            children: overall !== null ? overall.toFixed(1) : "—"
-                                                        }, void 0, false, {
-                                                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                            lineNumber: 282,
-                                                            columnNumber: 21
-                                                        }, this)
-                                                    ]
-                                                }, void 0, true, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 278,
-                                                    columnNumber: 19
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "mt-2 text-3xl font-semibold",
+                                            children: predictedOverall !== null ? predictedOverall.toFixed(1) : "—"
+                                        }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 267,
+                                            lineNumber: 293,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 263,
+                                    lineNumber: 289,
                                     columnNumber: 15
                                 }, this),
                                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                    className: "rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs",
+                                    className: "rounded-lg border border-slate-200 bg-slate-50 p-4",
                                     children: [
                                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
-                                            className: "text-[11px] uppercase text-slate-500 mb-2",
-                                            children: "By criterion"
+                                            className: "text-xs uppercase text-slate-500",
+                                            children: "AI examiner overall band"
                                         }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 291,
+                                            lineNumber: 300,
                                             columnNumber: 17
                                         }, this),
-                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                                            className: "space-y-1",
-                                            children: [
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
-                                                    label: "Task response",
-                                                    predicted: pTaskResponse,
-                                                    actual: taskResponse
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 295,
-                                                    columnNumber: 19
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
-                                                    label: "Coherence & cohesion",
-                                                    predicted: pCoherence,
-                                                    actual: coherence
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 300,
-                                                    columnNumber: 19
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
-                                                    label: "Lexical resource",
-                                                    predicted: pLexical,
-                                                    actual: lexical
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 305,
-                                                    columnNumber: 19
-                                                }, this),
-                                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
-                                                    label: "Grammar",
-                                                    predicted: pGrammar,
-                                                    actual: grammar
-                                                }, void 0, false, {
-                                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                                    lineNumber: 310,
-                                                    columnNumber: 19
-                                                }, this)
-                                            ]
-                                        }, void 0, true, {
+                                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("p", {
+                                            className: "mt-2 text-3xl font-semibold",
+                                            children: overall !== null ? overall.toFixed(1) : "—"
+                                        }, void 0, false, {
                                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                            lineNumber: 294,
+                                            lineNumber: 303,
                                             columnNumber: 17
                                         }, this)
                                     ]
                                 }, void 0, true, {
                                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                                    lineNumber: 290,
+                                    lineNumber: 299,
                                     columnNumber: 15
                                 }, this)
                             ]
                         }, void 0, true, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 261,
+                            lineNumber: 288,
+                            columnNumber: 13
+                        }, this),
+                        /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
+                            className: "space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm",
+                            children: [
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
+                                    label: "Task response",
+                                    predicted: pTaskResponse,
+                                    actual: taskResponse
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                    lineNumber: 310,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
+                                    label: "Coherence & cohesion",
+                                    predicted: pCoherence,
+                                    actual: coherence
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                    lineNumber: 315,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
+                                    label: "Lexical resource",
+                                    predicted: pLexical,
+                                    actual: lexical
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                    lineNumber: 320,
+                                    columnNumber: 15
+                                }, this),
+                                /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])(Row, {
+                                    label: "Grammar accuracy",
+                                    predicted: pGrammar,
+                                    actual: grammar
+                                }, void 0, false, {
+                                    fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                                    lineNumber: 325,
+                                    columnNumber: 15
+                                }, this)
+                            ]
+                        }, void 0, true, {
+                            fileName: "[project]/src/app/attempts/[id]/page.tsx",
+                            lineNumber: 309,
                             columnNumber: 13
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                    lineNumber: 255,
+                    lineNumber: 281,
                     columnNumber: 11
                 }, this),
                 /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("section", {
-                    className: "space-y-2",
+                    className: "space-y-3",
                     children: [
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("h2", {
                             className: "text-lg font-semibold",
                             children: "Your essay"
                         }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 323,
+                            lineNumber: 336,
                             columnNumber: 11
                         }, this),
                         /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("div", {
-                            className: "rounded-md border border-slate-200 bg-slate-50 p-4 text-sm whitespace-pre-wrap",
-                            children: attempt.essay_text
+                            className: "whitespace-pre-wrap rounded-md bg-slate-50 p-4 text-sm text-slate-800",
+                            children: attempt.essay_text ?? "No essay text stored for this attempt."
                         }, void 0, false, {
                             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                            lineNumber: 324,
+                            lineNumber: 337,
                             columnNumber: 11
                         }, this)
                     ]
                 }, void 0, true, {
                     fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                    lineNumber: 322,
+                    lineNumber: 335,
                     columnNumber: 9
                 }, this)
             ]
         }, void 0, true, {
             fileName: "[project]/src/app/attempts/[id]/page.tsx",
-            lineNumber: 95,
+            lineNumber: 120,
             columnNumber: 7
         }, this)
     }, void 0, false, {
         fileName: "[project]/src/app/attempts/[id]/page.tsx",
-        lineNumber: 94,
+        lineNumber: 119,
         columnNumber: 5
     }, this);
 }
@@ -899,7 +839,7 @@ async function AttemptDetailPage({ params }) {
                 children: label
             }, void 0, false, {
                 fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                lineNumber: 347,
+                lineNumber: 360,
                 columnNumber: 7
             }, this),
             /*#__PURE__*/ (0, __TURBOPACK__imported__module__$5b$project$5d2f$node_modules$2f$next$2f$dist$2f$server$2f$route$2d$modules$2f$app$2d$page$2f$vendored$2f$rsc$2f$react$2d$jsx$2d$dev$2d$runtime$2e$js__$5b$app$2d$rsc$5d$__$28$ecmascript$29$__["jsxDEV"])("span", {
@@ -912,7 +852,7 @@ async function AttemptDetailPage({ params }) {
                         children: "→"
                     }, void 0, false, {
                         fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                        lineNumber: 350,
+                        lineNumber: 363,
                         columnNumber: 9
                     }, this),
                     " ",
@@ -920,13 +860,13 @@ async function AttemptDetailPage({ params }) {
                 ]
             }, void 0, true, {
                 fileName: "[project]/src/app/attempts/[id]/page.tsx",
-                lineNumber: 348,
+                lineNumber: 361,
                 columnNumber: 7
             }, this)
         ]
     }, void 0, true, {
         fileName: "[project]/src/app/attempts/[id]/page.tsx",
-        lineNumber: 346,
+        lineNumber: 359,
         columnNumber: 5
     }, this);
 }

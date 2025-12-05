@@ -1,19 +1,26 @@
+"use client";
+
 import Link from "next/link";
-import { AuthButtons } from "@/components/AuthButtons";
+import { useSupabaseSession } from "@/components/SupabaseSessionProvider";
 
 export function SiteHeader() {
+  const { session, supabase } = useSupabaseSession();
+  const email = session?.user?.email as string | undefined;
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    window.location.href = "/";
+  }
+
   return (
-    <header className="border-b border-slate-200 bg-white px-6">
-      <div className="mx-auto max-w-3xl h-14 flex items-center justify-between">
-        {/* Brand */}
-        <div className="flex items-center gap-2">
-          <Link href="/" className="text-sm font-semibold text-slate-900">
+    <header className="w-full border-b border-slate-200 bg-white">
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
+        {/* Logo / brand */}
+        <Link href="/" className="flex items-center gap-2">
+          <span className="font-semibold text-slate-900">
             IELTS Writing Practice
-          </Link>
-          <span className="text-[11px] text-slate-400 hidden sm:inline">
-            AI Examiner · Beta
           </span>
-        </div>
+        </Link>
 
         {/* Nav + Auth */}
         <div className="flex items-center gap-4">
@@ -31,15 +38,42 @@ export function SiteHeader() {
               My attempts
             </Link>
             <Link
-              href="https://github.com/"
-              target="_blank"
-              className="text-slate-400 hover:text-slate-700"
+              href="/progress"
+              className="text-slate-600 hover:text-slate-900"
             >
-              GitHub
+              Progress
+            </Link>
+            <Link
+              href="/profile"
+              className="text-slate-600 hover:text-slate-900"
+            >
+              Profile
             </Link>
           </nav>
 
-          <AuthButtons />
+          {/* Auth (Supabase) */}
+          {session ? (
+            <div className="flex items-center gap-3">
+              {email && (
+                <span className="hidden text-xs text-slate-500 sm:inline">
+                  Signed in as <span className="font-medium">{email}</span>
+                </span>
+              )}
+              <button
+                onClick={handleLogout}
+                className="rounded-md border border-slate-300 px-3 py-1 text-xs sm:text-sm"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <Link
+              href="/auth/login"
+              className="rounded-md bg-slate-900 px-3 py-1 text-xs sm:text-sm text-white"
+            >
+              Sign in
+            </Link>
+          )}
         </div>
       </div>
     </header>
