@@ -148,16 +148,16 @@ model WritingTask {
 enum Plan {
   FREE
   PRO
+
+  @@map("plan_type")
 }
 
-model UserProfile {
-  id          String   @id @default(cuid())
-  userId      String   @unique @map("user_id")
-  user        User     @relation(fields: [userId], references: [id])
-  displayName String?  @map("display_name")
-  plan        Plan     @default(FREE)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
-
-  @@map("user_profiles")
+model Profile {
+  userId     String   @id @db.Uuid @map("user_id")
+  plan       Plan     @default(free)
+  inviteCode String?  @unique @map("invite_code")
+  invitedBy  String?  @db.Uuid @map("invited_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @default(now()) @map("updated_at")
 }
+
