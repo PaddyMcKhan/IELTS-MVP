@@ -1,6 +1,9 @@
 'use client';
 
+'use client';
+
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from "next/navigation";
 import { useWritingTasks } from "@/hooks/useWritingTasks";
 import { useSupabaseSession } from "@/components/SupabaseSessionProvider";
 import { useAutosaveDraft } from "@/hooks/useAutosaveDraft";
@@ -43,9 +46,16 @@ export default function Home() {
   const { session } = useSupabaseSession();
   const userId = (session?.user as any)?.id ?? null;
 
-  const [mode, setMode] = useState<'academic' | 'general'>('academic');
-  const [task, setTask] = useState<'task1' | 'task2'>('task2');
+  const searchParams = useSearchParams();
+  const initialQuestionIdFromUrl = searchParams.get("question_id");
+  const initialModeFromUrl = searchParams.get("mode");
+  const initialTaskFromUrl = searchParams.get("task");
+
+  const [mode, setMode] = useState<"academic" | "general">("academic");
+  const [task, setTask] = useState<"task1" | "task2">("task2");
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [initializedFromUrl, setInitializedFromUrl] = useState(false);
+  const [urlStateApplied, setUrlStateApplied] = useState(false);
 
   // Map UI mode/task to DB task_type (e.g. "task2_academic")
   const dbTaskType = useMemo(
@@ -73,6 +83,11 @@ export default function Home() {
   // Pro toggle: free (gpt-4o-mini) vs pro (gpt-4o)
   const [isPro, setIsPro] = useState(false);
 
+    // Subscription plan: "free" or "pro" (from Supabase profiles)
+  const [plan, setPlan] = useState<"free" | "pro">("free");
+  const [planLoading, setPlanLoading] = useState(false);
+  const [planError, setPlanError] = useState<string | null>(null);
+
   const storageKey = useMemo(
     () => `ielts:essay:${mode}:${task}:${selectedTaskId ?? 'none'}`,
     [mode, task, selectedTaskId]
@@ -84,12 +99,51 @@ export default function Home() {
   const prompt = selectedTask?.prompt ?? '';
   const minWords = selectedTask?.min_words ?? (task === "task1" ? 150 : 250);
 
-  // Ensure we always have a selectedTaskId once tasks load
+  // Apply mode/task from URL once on initial load, if valid.
   useEffect(() => {
-    if (!selectedTaskId && tasks && tasks.length > 0) {
+    if (urlStateApplied) return;
+
+    if (initialModeFromUrl === "academic" || initialModeFromUrl === "general") {
+      setMode(initialModeFromUrl);
+    }
+
+    if (initialTaskFromUrl === "task1" || initialTaskFromUrl === "task2") {
+      setTask(initialTaskFromUrl);
+    }
+
+    setUrlStateApplied(true);
+  }, [initialModeFromUrl, initialTaskFromUrl, urlStateApplied]);
+
+  // Ensure we always have a selectedTaskId once tasks load,
+  // and honor ?question_id=... on first load if it matches.
+  useEffect(() => {
+    if (!tasks || tasks.length === 0) return;
+    if (!urlStateApplied) return;
+    if (initializedFromUrl) return;
+
+    // If URL has a question_id, try to match it to the loaded tasks
+    if (initialQuestionIdFromUrl) {
+      const match = tasks.find((t: any) => String(t.id) === initialQuestionIdFromUrl);
+      if (match) {
+        setSelectedTaskId(match.id);
+        setInitializedFromUrl(true);
+        return;
+      }
+    }
+
+    // Fallback: default to the first task (your original behavior)
+    if (!selectedTaskId) {
       setSelectedTaskId(tasks[0].id);
     }
-  }, [tasks, selectedTaskId]);
+
+    setInitializedFromUrl(true);
+  }, [
+    tasks,
+    selectedTaskId,
+    initialQuestionIdFromUrl,
+    initializedFromUrl,
+    urlStateApplied,
+  ]);
 
   // 🔁 Cloud autosave hook (Step 9C)
   const { status: autosaveStatus, lastSavedAt } = useAutosaveDraft({
@@ -216,6 +270,69 @@ export default function Home() {
     loadAttempts();
   }, [userId]);
 
+  // Load subscription plan from /api/profile/save when userId changes
+  useEffect(() => {
+  // Not signed in → treat as free and ensure Pro is off
+    if (!userId) {
+      setPlan("free");
+      setIsPro(false);
+      setPlanError(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchPlan() {
+      try {
+        setPlanLoading(true);
+        setPlanError(null);
+
+        const res = await fetch("/api/profile/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId }),
+        });
+
+        const json = await res.json();
+
+        if (!res.ok || json.error) {
+          if (cancelled) return;
+          setPlan("free");
+          setIsPro(false);
+          setPlanError(json.error || "Failed to load plan.");
+          return;
+        }
+
+        if (cancelled) return;
+
+        const apiPlan = json.profile?.plan === "pro" ? "pro" : "free";
+        setPlan(apiPlan);
+
+        // If the user is not Pro, make sure Pro toggle is off
+        if (apiPlan !== "pro") {
+          setIsPro(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error("Failed to load plan:", err);
+          setPlan("free");
+          setIsPro(false);
+          setPlanError("Failed to load plan.");
+        }
+      } finally {
+        if (!cancelled) {
+          setPlanLoading(false);
+        }
+      }
+    }
+
+    fetchPlan();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId]);
+
   // Welcome-back progress popup (Step 12C)
   useEffect(() => {
     if (!userId) return;
@@ -332,6 +449,9 @@ export default function Home() {
           questionId: selectedTaskId,        // writing_tasks.id
           taskType: selectedTask?.task_type, // e.g. "task2_academic"
           minWords,                          // DB min_words (or fallback)
+
+          // New: pass userId so /api/score can check plan
+          userId: userId ?? null,
         }),
       });
 
@@ -629,18 +749,52 @@ export default function Home() {
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
-              {/* Pro toggle */}
-              <label className="flex items-center gap-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={isPro}
-                  onChange={(e) => setIsPro(e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <span>
-                  Use <span className="font-semibold">Pro scoring</span> (gpt-4o)
-                </span>
-              </label>
+
+                {/* Pro toggle */}
+                {(() => {
+                  const isLocked = !userId || plan !== "pro";
+
+                  return (
+                    <label
+                      className={`flex flex-col md:flex-row md:items-center gap-1 md:gap-2 text-xs text-slate-600 ${isLocked ? "opacity-60 cursor-not-allowed" : ""
+                        }`}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={isPro}
+                          disabled={isLocked || planLoading}
+                          onChange={(e) => setIsPro(e.target.checked)}
+                          className="h-4 w-4"
+                        />
+                        <span>
+                          Use{" "}
+                          <span className="font-semibold">Pro scoring</span>{" "}
+                          (gpt-4o)
+                        </span>
+                      </span>
+
+                      <span className="text-[10px] text-slate-500">
+                        {planLoading && "Checking your plan…"}
+                        {!planLoading && isLocked && !userId && (
+                          <>Sign in and upgrade to unlock Pro scoring.</>
+                        )}
+                        {!planLoading && isLocked && userId && (
+                          <>Upgrade to Pro to unlock GPT-4o scoring.</>
+                        )}
+                        {!planLoading && !isLocked && (
+                          <>Pro active – GPT-4o scoring enabled.</>
+                        )}
+                      </span>
+
+                      {planError && (
+                        <span className="text-[10px] text-red-500">
+                          {planError}
+                        </span>
+                      )}
+                    </label>
+                  );
+                })()}
 
               <Button
                 variant="outline"
@@ -673,7 +827,13 @@ export default function Home() {
           </div>
 
           <p className="text-xs text-slate-500">
-            Scoring model: {isPro ? "Pro (gpt-4o)" : "Free (gpt-4o-mini, suitable for practice)"}.
+            Scoring model:{" "}
+            {isPro
+              ? "Pro (gpt-4o)"
+              : "Free (gpt-4o-mini, suitable for practice)"}
+            {" · "}
+            Current plan:{" "}
+            <span className="font-medium uppercase">{plan}</span>.
           </p>
         </Card>
 

@@ -26,7 +26,9 @@ export default function PageShell({
       {(title || description) && (
         <header>
           {title && (
-            <h1 className="text-2xl font-semibold text-slate-100">{title}</h1>
+            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">
+              {title}
+            </h1>
           )}
           {description && (
             <p className="mt-1 text-sm text-slate-400">{description}</p>

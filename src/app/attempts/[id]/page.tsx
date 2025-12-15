@@ -22,6 +22,14 @@ type AttemptRow = {
   created_at: Date | string;
 };
 
+type HistoryRow = {
+  id: string;
+  user_id: string | null;
+  question_id: string | null;
+  score_json: any | null;
+  created_at: Date | string;
+};
+
 export default async function AttemptDetailPage({ params }: PageProps) {
   const { id } = await params;
 
@@ -52,13 +60,32 @@ export default async function AttemptDetailPage({ params }: PageProps) {
       ? attempt.created_at
       : new Date(attempt.created_at);
 
-  // Try to find matching task from TASKS for richer metadata
-  const question = attempt.question_id
-    ? TASKS.find((t) => t.id === attempt.question_id)
+  // All attempts for this user on the same question – for history
+  let history: HistoryRow[] = [];
+  if (attempt.user_id && attempt.question_id) {
+    history = await prisma.$queryRaw<HistoryRow[]>`
+      select id, user_id, question_id, score_json, created_at
+      from essay_attempts
+      where user_id = ${attempt.user_id}
+        and question_id = ${attempt.question_id}
+      order by created_at asc
+    `;
+  }
+
+  const totalAttemptsForQuestion = history.length;
+  const currentIndexInHistory = history.findIndex(
+    (h) => h.id === attempt.id
+  );
+  const attemptNumberForThisQuestion =
+    currentIndexInHistory === -1 ? null : currentIndexInHistory + 1;
+
+  // Try to find matching task from TASKS for richer metadata (fallback only)
+  const questionFromTasks = attempt.question_id
+    ? TASKS.find((t) => String(t.id) === String(attempt.question_id))
     : undefined;
 
   // === Derive meta labels (module / task / prompt) ===
-  const rawModule = attempt.module ?? question?.module ?? null;
+  const rawModule = attempt.module ?? questionFromTasks?.module ?? null;
   const moduleLabel =
     rawModule === "academic"
       ? "Academic"
@@ -66,7 +93,7 @@ export default async function AttemptDetailPage({ params }: PageProps) {
       ? "General"
       : rawModule;
 
-  const rawTask = attempt.task ?? question?.task ?? null;
+  const rawTask = attempt.task ?? questionFromTasks?.task ?? null;
   const taskLabel =
     rawTask === "task1"
       ? "Task 1"
@@ -75,7 +102,22 @@ export default async function AttemptDetailPage({ params }: PageProps) {
       : rawTask;
 
   const promptText =
-    attempt.question_text ?? question?.prompt ?? null;
+    attempt.question_text ?? questionFromTasks?.prompt ?? null;
+
+  // Build “rewrite this question” href using the same pattern as Questions page
+  const modeParam =
+    rawModule === "academic" || rawModule === "general"
+      ? rawModule
+      : null;
+  const taskParam =
+    rawTask === "task1" || rawTask === "task2" ? rawTask : null;
+
+  const practiceHref =
+    attempt.question_id != null
+      ? `/?question_id=${attempt.question_id}${
+          modeParam ? `&mode=${modeParam}` : ""
+        }${taskParam ? `&task=${taskParam}` : ""}`
+      : null;
 
   // === Interpret score_json ===
   const score = attempt.score_json as any | null;
@@ -169,6 +211,74 @@ export default async function AttemptDetailPage({ params }: PageProps) {
           ← Back to attempts
         </Link>
       </header>
+
+      {/* QUESTION CONTEXT + REWRITE CTA */}
+      {attempt.question_id && (
+        <section className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-semibold text-slate-800">
+                {moduleLabel && `${moduleLabel} • `}{" "}
+                {taskLabel && `${taskLabel} • `}Q{attempt.question_id}
+              </p>
+              {attemptNumberForThisQuestion && totalAttemptsForQuestion > 1 && (
+                <p className="text-[11px] text-slate-500">
+                  This is your attempt {attemptNumberForThisQuestion} of{" "}
+                  {totalAttemptsForQuestion} on this question.
+                </p>
+              )}
+            </div>
+
+            {practiceHref && (
+              <Link
+                href={practiceHref}
+                className="text-[11px] font-semibold text-emerald-700 hover:underline"
+              >
+                Rewrite this question →
+              </Link>
+            )}
+          </div>
+
+          {history.length > 1 && (
+            <div className="mt-3 text-[11px] text-slate-500">
+              <p className="mb-1 font-semibold text-slate-700">
+                Your attempts on this question
+              </p>
+              <ul className="space-y-1">
+                {history.map((h) => {
+                  const created =
+                    h.created_at instanceof Date
+                      ? h.created_at
+                      : new Date(h.created_at);
+                  const s = h.score_json as any;
+                  const o =
+                    typeof s?.overall === "number" ? s.overall : null;
+                  const isCurrent = h.id === attempt.id;
+
+                  return (
+                    <li
+                      key={h.id}
+                      className="flex items-center justify-between"
+                    >
+                      <span>
+                        {created.toLocaleDateString()}{" "}
+                        {created.toLocaleTimeString(undefined, {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                        {isCurrent && " (current)"}
+                      </span>
+                      <span className="text-slate-700">
+                        {o !== null ? `Band ${o.toFixed(1)}` : "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
 
       {/* META BLOCK – SaaS style */}
       <section className="space-y-2 text-sm">
