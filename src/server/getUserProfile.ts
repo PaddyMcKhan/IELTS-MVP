@@ -1,4 +1,4 @@
-import { prisma } from "@/server/prisma";
+import { prisma } from "./prisma";
 
 export async function getUserProfile(userId: string | null | undefined) {
   if (!userId) return null;
