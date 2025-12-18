@@ -1,7 +1,5 @@
 'use client';
 
-'use client';
-
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from "next/navigation";
 import { useWritingTasks } from "@/hooks/useWritingTasks";
@@ -283,48 +281,58 @@ export default function Home() {
     let cancelled = false;
 
     async function fetchPlan() {
-      try {
-        setPlanLoading(true);
-        setPlanError(null);
+  try {
+    setPlanLoading(true);
+    setPlanError(null);
 
-        const res = await fetch("/api/profile/save", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ userId }),
-        });
+    const res = await fetch("/api/profile/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId }),
+    });
 
-        const json = await res.json();
+    const json = await res.json();
 
-        if (!res.ok || json.error) {
-          if (cancelled) return;
-          setPlan("free");
-          setIsPro(false);
-          setPlanError(json.error || "Failed to load plan.");
-          return;
-        }
-
-        if (cancelled) return;
-
-        const apiPlan = json.profile?.plan === "pro" ? "pro" : "free";
-        setPlan(apiPlan);
-
-        // If the user is not Pro, make sure Pro toggle is off
-        if (apiPlan !== "pro") {
-          setIsPro(false);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          console.error("Failed to load plan:", err);
-          setPlan("free");
-          setIsPro(false);
-          setPlanError("Failed to load plan.");
-        }
-      } finally {
-        if (!cancelled) {
-          setPlanLoading(false);
-        }
-      }
+    if (!res.ok || json.error) {
+      if (cancelled) return;
+      setPlan("free");
+      setIsPro(false);
+      setPlanError(json.error || "Failed to load plan.");
+      return;
     }
+
+    if (cancelled) return;
+
+    // ✅ derive apiPlan safely from response
+    const apiPlanRaw =
+      json.plan ??
+      json.profile?.plan ??
+      json.user_profile?.plan ??
+      json.data?.plan ??
+      "free";
+
+    const apiPlan =
+      String(apiPlanRaw).toLowerCase() === "pro" ? "pro" : "free";
+
+    setPlan(apiPlan);
+
+    // If the user is not Pro, make sure Pro toggle is off
+    if (apiPlan !== "pro") {
+      setIsPro(false);
+    }
+  } catch (err) {
+    if (!cancelled) {
+      console.error("Failed to load plan:", err);
+      setPlan("free");
+      setIsPro(false);
+      setPlanError("Failed to load plan.");
+    }
+  } finally {
+    if (!cancelled) {
+      setPlanLoading(false);
+    }
+  }
+}
 
     fetchPlan();
 

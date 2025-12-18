@@ -29,23 +29,22 @@ export type SpeakingScoreJson = {
 interface SpeakingRecorderProps {
   part: PartKey;
   questionId: string;
+  questionPrompt?: string | null; // ✅ NEW (for attempt details + bank parity)
   durationSeconds: number;
   notes: string;
   userId: string | null;
   isPro: boolean;
   onSessionStart?: () => void;
-  onScore?: (payload: {
-    score: SpeakingScoreJson;
-    transcript: string | null;
-  }) => void;
+  onScore?: (payload: { score: SpeakingScoreJson; transcript: string | null }) => void;
 }
 
 export function SpeakingRecorder({
   part,
   questionId,
+  questionPrompt, // ✅ NEW
   durationSeconds,
   notes,
-  userId, // not sent to API; backend uses session
+  userId,
   isPro,
   onSessionStart,
   onScore,
@@ -162,7 +161,7 @@ export function SpeakingRecorder({
     } catch (err: any) {
       console.error("Error starting recording:", err);
       setError(
-        "Could not access your microphone. Please check browser permissions and try again.",
+        "Could not access your microphone. Please check browser permissions and try again."
       );
       setStatus("idle");
       stopStream();
@@ -216,7 +215,10 @@ export function SpeakingRecorder({
       formData.append("questionId", String(questionId));
       formData.append("part", part ?? "unknown");
 
-      // Send userId + notes so the scorer can persist attempts
+      if (questionPrompt && questionPrompt.trim()) {
+        formData.append("questionPrompt", questionPrompt.trim());
+      }
+
       if (userId) {
         formData.append("userId", userId);
       }
@@ -224,10 +226,7 @@ export function SpeakingRecorder({
         formData.append("notes", notes.trim());
       }
 
-      // Notes and userId are *not* sent; backend uses session and stores attempts.
-      const url = isPro
-        ? "/api/speaking/score?pro=true"
-        : "/api/speaking/score";
+      const url = isPro ? "/api/speaking/score?pro=true" : "/api/speaking/score";
 
       const res = await fetch(url, {
         method: "POST",
@@ -236,43 +235,84 @@ export function SpeakingRecorder({
 
       const json = await res.json();
 
-      if (!res.ok || json.error) {
-        console.error("Speaking scoring error:", json);
-        setApiError(
-          json.error ||
-            "AI examiner could not score this answer. Please try again.",
-        );
-        setStatus("finished");
-        return;
-      }
+      // Accept both shapes:
+      // - old: { score, transcript }
+      // - new: { score_json, transcript }
+      const scoreJson: SpeakingScoreJson | null =
+        (json?.score_json as SpeakingScoreJson | undefined) ??
+        (json?.score as SpeakingScoreJson | undefined) ??
+        null;
 
-      const scoreJson: SpeakingScoreJson | undefined = json.score;
-      const transcriptText: string | undefined = json.transcript;
+      const transcriptText: string | null =
+        typeof json?.transcript === "string" ? json.transcript : null;
 
+      // If examiner returns "no valid speech" it can be: score_json: null
+      // We treat that as finished, but show a friendly message.
       if (!scoreJson) {
+        setScore(null);
+        setTranscript(transcriptText);
         setApiError(
-          "Received an unexpected response from the AI examiner. Please try again.",
+          json?.reason ||
+            "Received an unexpected response from the AI examiner. Please try again."
         );
         setStatus("finished");
         return;
       }
 
-      // Local mini feedback card
+      setApiError(null);
       setScore(scoreJson);
-      setTranscript(transcriptText ?? null);
+      setTranscript(transcriptText);
       setStatus("finished");
 
-      // Notify parent page so it can render the big comparison card
-      if (onScore) {
-        onScore({
-          score: scoreJson,
-          transcript: transcriptText ?? null,
-        });
+      // ✅ Save the attempt to Supabase (Writing-style: score-only route + save-only route)
+      try {
+        if (!userId) {
+          console.warn("No userId; skipping speaking attempt save.");
+        } else {
+          const saveRes = await fetch("/api/speaking/attempts", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId,
+              part,
+              duration_seconds: durationSeconds,
+              transcript: transcriptText ?? "",
+              question_id: String(questionId),          // matches your current table usage
+              question_prompt: questionPrompt ?? null,  // snapshot (optional)
+              score_json: scoreJson,
+              overall_band: scoreJson.overall_band,
+              model: json?.model ?? (isPro ? "gpt-4o" : "gpt-4o-mini"),
+              isPro,
+              audio_path: "inline-openai",
+            }),
+          });
+
+          const saveJson = await saveRes.json().catch(() => ({}));
+
+          if (!saveRes.ok) {
+            console.error("Failed to save speaking attempt:", saveRes.status, saveJson);
+            setApiError(
+              saveJson?.error ||
+              `Scored successfully, but failed to save attempt (HTTP ${saveRes.status}).`
+            );
+          } else {
+            console.log("Speaking attempt saved:", saveJson?.attempt?.id ?? saveJson);
+          }
+        }
+      } catch (e) {
+        console.error("Unexpected error saving speaking attempt:", e);
+        setApiError("Scored successfully, but saving the attempt failed unexpectedly.");
       }
+
+      // Notify parent page so it can render the big comparison card
+      onScore?.({
+        score: scoreJson,
+        transcript: transcriptText,
+      });
     } catch (err: any) {
       console.error("Error calling /api/speaking/score:", err);
       setApiError(
-        "Something went wrong while contacting the AI examiner. Please try again.",
+        "Something went wrong while contacting the AI examiner. Please try again."
       );
       setStatus("finished");
     }
@@ -292,7 +332,7 @@ export function SpeakingRecorder({
 
   const formattedTime = `${String(Math.floor(elapsedSeconds / 60)).padStart(
     2,
-    "0",
+    "0"
   )}:${String(elapsedSeconds % 60).padStart(2, "0")}`;
 
   const partLabel =
@@ -306,12 +346,10 @@ export function SpeakingRecorder({
   if (!isSupported) {
     return (
       <Card className="space-y-2 p-4">
-        <p className="text-sm font-semibold text-slate-900">
-          AI Examiner Recorder
-        </p>
+        <p className="text-sm font-semibold text-slate-900">AI Examiner Recorder</p>
         <p className="text-xs text-slate-600">
-          Audio recording is not supported in this browser. Please try again in a
-          modern desktop browser that supports MediaRecorder.
+          Audio recording is not supported in this browser. Please try again in a modern
+          desktop browser that supports MediaRecorder.
         </p>
       </Card>
     );
@@ -321,12 +359,10 @@ export function SpeakingRecorder({
     <Card className="space-y-4 p-4">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-slate-900">
-            AI Examiner Recorder
-          </p>
+          <p className="text-sm font-semibold text-slate-900">AI Examiner Recorder</p>
           <p className="text-[11px] text-slate-500">
-            Record your answer, listen back, then send it to the AI examiner for a
-            band score and feedback. Your notes stay private to you.
+            Record your answer, listen back, then send it to the AI examiner for a band
+            score and feedback. Your notes stay private to you.
           </p>
         </div>
         <div className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">
@@ -356,8 +392,7 @@ export function SpeakingRecorder({
           </span>
         </div>
         <span className="font-mono text-slate-700">
-          {formattedTime} /{" "}
-          {String(Math.floor(durationSeconds / 60)).padStart(2, "0")}:
+          {formattedTime} / {String(Math.floor(durationSeconds / 60)).padStart(2, "0")}:
           {String(durationSeconds % 60).padStart(2, "0")}
         </span>
       </div>
@@ -402,8 +437,8 @@ export function SpeakingRecorder({
       {audioUrl && (
         <div className="space-y-2">
           <p className="text-[11px] font-medium text-slate-600">
-            Playback of your answer (local). Once you send it, the audio is
-            uploaded securely and analysed by the AI examiner.
+            Playback of your answer (local). Once you send it, the audio is uploaded
+            securely and analysed by the AI examiner.
           </p>
           <audio controls src={audioUrl} className="w-full" />
         </div>
@@ -423,15 +458,13 @@ export function SpeakingRecorder({
               <p>
                 Fluency &amp; Coherence:{" "}
                 <span className="font-medium">
-                  {score.fluency_coherence?.toFixed?.(1) ??
-                    score.fluency_coherence}
+                  {score.fluency_coherence?.toFixed?.(1) ?? score.fluency_coherence}
                 </span>
               </p>
               <p>
                 Lexical Resource:{" "}
                 <span className="font-medium">
-                  {score.lexical_resource?.toFixed?.(1) ??
-                    score.lexical_resource}
+                  {score.lexical_resource?.toFixed?.(1) ?? score.lexical_resource}
                 </span>
               </p>
               <p>
@@ -452,9 +485,7 @@ export function SpeakingRecorder({
 
           {score.band_explanation_overall && (
             <div className="space-y-1 text-[11px] text-slate-700">
-              <p className="font-semibold uppercase text-slate-500">
-                Examiner summary
-              </p>
+              <p className="font-semibold uppercase text-slate-500">Examiner summary</p>
               <p>{score.band_explanation_overall}</p>
             </div>
           )}
@@ -470,8 +501,8 @@ export function SpeakingRecorder({
 
           <p className="text-[10px] text-slate-400">
             Your notes ({notes.length} characters) are{" "}
-            <span className="font-semibold">not</span> sent to the AI examiner.
-            They&apos;re only for your own reflection on the practice page.
+            <span className="font-semibold">not</span> sent to the AI examiner. They&apos;re
+            only for your own reflection on the practice page.
           </p>
         </div>
       )}
@@ -479,8 +510,8 @@ export function SpeakingRecorder({
       {!score && (
         <p className="text-[10px] text-slate-400">
           Your notes ({notes.length} characters) are{" "}
-          <span className="font-semibold">not</span> sent to the AI examiner.
-          They&apos;re only for your own reflection on the practice page.
+          <span className="font-semibold">not</span> sent to the AI examiner. They&apos;re
+          only for your own reflection on the practice page.
         </p>
       )}
     </Card>

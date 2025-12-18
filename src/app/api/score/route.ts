@@ -4,10 +4,12 @@ import OpenAI from "openai";
 import { createClient } from "@/utils/supabase/server";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
+/* ------------------ SUPABASE (PLAN CHECK) ------------------ */
 const supabaseUrl =
   process.env.NEXT_PUBLIC_SUPABASE_URL ??
   process.env.SUPABASE_URL ??
   "";
+
 const supabaseKey =
   process.env.SUPABASE_SERVICE_ROLE_KEY ??
   process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
@@ -21,68 +23,110 @@ const supabase =
     : null;
 
 async function getUserPlan(userId: string | null | undefined) {
-  if (!supabase || !userId) {
-    return "free" as const;
-  }
+  if (!supabase || !userId) return "free" as const;
 
   try {
     const { data, error } = await supabase
-      .from("profiles")
-      .select("plan, pro_until")
+      .from("user_profiles")
+      .select("plan, is_pro, pro_expires_at")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (error || !data) {
+      console.warn("[SCORE] plan lookup error:", { userId, error });
       return "free" as const;
     }
 
-    // Optional: if pro_until exists and is in the past, treat as free again
-    if (data.pro_until) {
-      const now = new Date();
-      const until = new Date(data.pro_until);
-      if (until.getTime() < now.getTime()) {
-        return "free" as const;
-      }
+    // If pro_expires_at exists and is in the past → free
+    if (data.pro_expires_at) {
+      const until = new Date(data.pro_expires_at);
+      if (until.getTime() < Date.now()) return "free" as const;
     }
 
-    return (data.plan === "pro" ? "pro" : "free") as const;
-  } catch {
+    // Primary truth: plan string, normalized
+    const planValue = (data.plan ?? "").toString().toLowerCase();
+    if (planValue === "pro") return "pro" as const;
+
+    // Secondary truth: boolean (useful for admins / legacy)
+    if (data.is_pro === true) return "pro" as const;
+
+    return "free" as const;
+  } catch (e) {
+    console.warn("[SCORE] plan lookup exception:", { userId, e });
     return "free" as const;
   }
 }
 
+/* ------------------ OPENAI ------------------ */
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY!,
 });
 
-// Choose model depending on free vs pro mode
 function pickModel(isPro: boolean) {
-  // ENV override (owner-level)
   if (process.env.AI_PRO_MODE === "true") return "gpt-4o";
-
-  // URL-level override
   if (isPro) return "gpt-4o";
-
-  // Default (free tier)
   return "gpt-4o-mini";
 }
 
+/* ------------------ HARD NO-CONTENT GUARD ------------------ */
+function normalize(s: string) {
+  return (s || "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function detectNoContent(essay: string, prompt: string) {
+  const e = normalize(essay);
+  const p = normalize(prompt);
+
+  const words = e.split(" ").filter(Boolean);
+  const uniqueWords = new Set(words);
+  const uniqueRatio = words.length ? uniqueWords.size / words.length : 0;
+
+  const promptRepeats =
+    p && e ? Math.max(0, e.split(p).length - 1) : 0;
+
+  const sentences = essay
+    .split(/[.!?]+/)
+    .map((s) => normalize(s))
+    .filter((s) => s.length > 20);
+
+  const repeatedSentenceRatio =
+    sentences.length > 0
+      ? 1 - new Set(sentences).size / sentences.length
+      : 0;
+
+  return {
+    wordCount: words.length,
+    uniqueRatio,
+    promptRepeats,
+    repeatedSentenceRatio,
+    isNoContent:
+      words.length < 80 ||
+      uniqueRatio < 0.35 ||
+      promptRepeats >= 1 ||
+      repeatedSentenceRatio > 0.5,
+  };
+}
+
+/* ------------------ ROUTE ------------------ */
 export async function POST(req: Request) {
   try {
     const body = await req.json();
 
     const {
       essay,
-      task,                // "task1" | "task2" from UI
+      task,
       wordCount,
-      question,            // client copy of prompt (fallback only)
-      questionId,          // writing_tasks.id
-      taskType,            // e.g. "task2_academic" (fallback only)
-      minWords: clientMinWords, // min words from client (fallback only)
+      question,
+      questionId,
+      taskType,
+      minWords: clientMinWords,
       userId,
     } = body ?? {};
 
-    // Basic validation
     if (!essay || !task || typeof wordCount !== "number") {
       return NextResponse.json(
         { error: "Missing required fields for scoring." },
@@ -90,14 +134,12 @@ export async function POST(req: Request) {
       );
     }
 
-    // Detect if this user is requesting pro mode (?pro=true)
     const { searchParams } = new URL(req.url);
-    const isPro = searchParams.get("pro") === "true";
-
-    // 🔐 NEW: check the user's subscription plan
+    const isProRequested = searchParams.get("pro") === "true";
     const plan = await getUserPlan(userId);
+    console.log("[SCORE] plan check:", { userId, plan, isProRequested });
 
-    if (isPro && plan !== "pro") {
+    if (isProRequested && plan !== "pro") {
       return NextResponse.json(
         {
           error: "Pro scoring (GPT-4o) is only available for Pro users.",
@@ -107,42 +149,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const model = pickModel(isPro);
-
-    // 🔑 Step 11E: fetch canonical task data from Supabase
-    const supabase = createClient();
-
+    /* ---------- CANONICAL TASK ---------- */
+    const supabaseClient = createClient();
     let dbTask: any = null;
 
     if (questionId) {
-      const { data, error } = await supabase
+      const { data } = await supabaseClient
         .from("writing_tasks")
-        .select("id, prompt, min_words, task_type")
+        .select("prompt, min_words, task_type")
         .eq("id", questionId)
         .single();
-
-      if (!error && data) {
-        dbTask = data;
-      } else {
-        console.warn("Score API: failed to load writing_tasks row", {
-          questionId,
-          error,
-        });
-      }
+      dbTask = data ?? null;
     }
 
-    // Canonical values (DB → client → defaults)
-    const canonicalPrompt: string =
+    const canonicalPrompt =
       dbTask?.prompt ??
       question ??
-      "Unknown IELTS Writing task prompt (no prompt supplied).";
+      "Unknown IELTS Writing prompt.";
 
-    const canonicalTaskType: string =
-      dbTask?.task_type ??
-      taskType ??
-      (task === "task1" ? "task1_academic" : "task2_academic");
-
-    const canonicalMinWords: number =
+    const canonicalMinWords =
       typeof dbTask?.min_words === "number"
         ? dbTask.min_words
         : typeof clientMinWords === "number"
@@ -151,10 +176,46 @@ export async function POST(req: Request) {
         ? 150
         : 250;
 
-    const taskNumber = task === "task1" ? "1" : "2";
-    const moduleLabel = canonicalTaskType.endsWith("_general")
-      ? "General Training"
-      : "Academic";
+    /* ---------- HARD FAIL: NO CONTENT ---------- */
+    const sig = detectNoContent(essay, canonicalPrompt);
+
+    if (sig.isNoContent) {
+      return NextResponse.json({
+        taskResponse: 2.0,
+        coherence: 2.0,
+        lexical: 2.0,
+        grammar: 2.0,
+        overall: 2.0,
+        comments: {
+          overview:
+            "The response contains no original content and largely repeats the task prompt. As a result, the essay cannot be meaningfully assessed against IELTS Writing criteria.",
+          taskResponse:
+            "The task is not addressed. No position, ideas, or examples are presented.",
+          coherence:
+            "Coherence and cohesion cannot be assessed due to the absence of original content.",
+          lexical:
+            "There is no evidence of vocabulary range beyond repetition of the prompt.",
+          grammar:
+            "Grammatical range and accuracy cannot be evaluated without original sentences.",
+          advice:
+            "Write an original response that directly answers the question. Develop ideas with examples, use varied vocabulary, and organise the essay into clear paragraphs.",
+          long_overall:
+            "This response fails to meet the minimum requirements of IELTS Writing Task 2. The repeated use of the task prompt without any original contribution prevents assessment across all criteria.",
+          long_taskResponse:
+            "No attempt is made to answer the question. A clear position and developed arguments are completely absent.",
+          long_coherence:
+            "There is no paragraphing or progression of ideas to evaluate.",
+          long_lexical:
+            "Lexical resource cannot be demonstrated when the response contains no original vocabulary.",
+          long_grammar:
+            "Grammatical range and accuracy cannot be assessed due to the absence of meaningful sentences.",
+        },
+        modelUsed: "guard-no-content",
+      });
+    }
+
+    /* ---------- AI SCORING ---------- */
+    const model = pickModel(isProRequested);
 
     const prompt = `
 You are a Senior IELTS Writing Examiner with more than 15 years of professional experience.
@@ -352,17 +413,10 @@ ${essay}
       max_output_tokens: 1024,
     });
 
-    // Get raw text and strip any accidental ```json fences
     let raw = completion.output_text.trim();
 
     if (raw.startsWith("```")) {
-      const firstNewline = raw.indexOf("\n");
-      const lastFence = raw.lastIndexOf("```");
-      if (firstNewline !== -1) {
-        raw = raw
-          .slice(firstNewline + 1, lastFence === -1 ? undefined : lastFence)
-          .trim();
-      }
+      raw = raw.replace(/^```json|```$/g, "").trim();
     }
 
     const json = JSON.parse(raw);
@@ -377,7 +431,6 @@ ${essay}
       {
         error: "Failed to score essay",
         detail: err?.message,
-        type: err?.type ?? "unknown",
       },
       { status: 500 }
     );

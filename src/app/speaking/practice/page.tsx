@@ -310,7 +310,8 @@ export default function SpeakingPracticePage() {
 
         if (cancelled) return;
 
-        const apiPlan = json.profile?.plan === "pro" ? "pro" : "free";
+        const rawPlan = (json.profile?.plan ?? "").toString().toLowerCase();
+        const apiPlan = rawPlan === "pro" ? "pro" : "free";
         setPlan(apiPlan);
 
         if (apiPlan !== "pro") {
@@ -547,6 +548,7 @@ export default function SpeakingPracticePage() {
               userId={userId}
               part={part}
               questionId={effectiveQuestionId}
+              questionPrompt={displayPrompt}
               durationSeconds={duration}
               notes={notes}
               isPro={isPro}
