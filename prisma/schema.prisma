@@ -6,14 +6,16 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 // =====================
-// NextAuth core models
+// NextAuth core models (legacy)
 // =====================
+// NOTE: You removed NextAuth routes, but these models can stay if the tables exist.
+// If you later want to remove NextAuth tables completely, we can do a clean migration.
 
 model User {
   id            String    @id @default(cuid())
@@ -26,10 +28,12 @@ model User {
   sessions      Session[]
   essayAttempts EssayAttempt[]
   essayDrafts   EssayDraft[]
-  profile       UserProfile?
+
+  // ✅ FIX: was UserProfile? (missing model). Use Profile instead.
+  profile       Profile?
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("users")
 }
@@ -85,8 +89,8 @@ model EssayAttempt {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   // IELTS context
-  module       String // "academic" | "general"
-  task         String // "task1" | "task2"
+  module       String  // "academic" | "general"
+  task         String  // "task1" | "task2"
   questionId   String? @map("question_id") // matches TASKS[id]
   questionText String  @map("question_text")
 
@@ -115,7 +119,7 @@ model EssayDraft {
   content    String
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -155,10 +159,19 @@ enum Plan {
 
 model Profile {
   userId     String   @id @db.Uuid @map("user_id")
-  plan       Plan     @default(free)
+
+  // ✅ FIX: enum default must match enum values (FREE/PRO), not "free"
+  plan       Plan     @default(FREE)
+
   inviteCode String?  @unique @map("invite_code")
   invitedBy  String?  @db.Uuid @map("invited_by")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @default(now()) @map("updated_at")
-}
 
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // ✅ Relation back to User (so User.profile works)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // ✅ Map to your real table name used throughout the app
+  @@map("user_profiles")
+}
