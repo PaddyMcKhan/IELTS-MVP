@@ -12,7 +12,7 @@ function HubCard({ title, desc, href }: { title: string; desc: string; href: str
 
 export default function QuestionsHubPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-10">
+    <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="text-2xl font-semibold">Questions</h1>
       <p className="mt-1 text-sm text-slate-600">Choose a module.</p>
 

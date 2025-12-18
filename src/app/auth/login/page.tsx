@@ -12,6 +12,9 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // ✅ NEW: after sign-in, send users to the IELTS-Master Hub
+  const NEXT_AFTER_LOGIN = "/apps";
+
   const handleLogin = async () => {
     setError("");
     setLoading(true);
@@ -25,16 +28,22 @@ export default function LoginPage() {
 
     if (error) {
       setError(error.message);
-    } else {
-      // On success, go to Practice (home) – this will also trigger the welcome popup logic
-      window.location.href = "/";
+      return;
     }
+
+    // ✅ On success, go to Hub
+    window.location.href = NEXT_AFTER_LOGIN;
   };
 
   const handleGoogle = async () => {
+    setError("");
     // This will only work once you enable Google in Supabase → Auth → Providers
     await supabase.auth.signInWithOAuth({
       provider: "google",
+      options: {
+        // ✅ Ensure OAuth lands on Hub after auth completes
+        redirectTo: `${window.location.origin}${NEXT_AFTER_LOGIN}`,
+      },
     });
   };
 
