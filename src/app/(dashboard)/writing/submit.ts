@@ -1,8 +1,6 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/options";
 
 export async function saveEssayAttempt({
   questionId,
@@ -14,17 +12,27 @@ export async function saveEssayAttempt({
   score: any;
 }) {
   const supabase = createClient();
-  const session = await getServerSession(authOptions);
 
-  if (!session?.user?.id) {
+  // ✅ Supabase server auth (replaces NextAuth session)
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    console.error("Supabase auth error:", userError);
+    throw new Error("Not authenticated");
+  }
+
+  if (!user?.id) {
     throw new Error("Not authenticated");
   }
 
   const { error } = await supabase.from("essay_attempts").insert({
-    user_id: session.user.id,
-    question_id: questionId,
-    essay_text: essay,
-    score_json: score,
+    user_id: user.id,          // ✅ same meaning as session.user.id
+    question_id: questionId,   // ✅ unchanged
+    essay_text: essay,         // ✅ unchanged
+    score_json: score,         // ✅ unchanged
   });
 
   if (error) {

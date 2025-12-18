@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-
+import { createClient } from "@/utils/supabase/server";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -30,14 +30,15 @@ const supabase =
     : null;
 
 async function getUserPlan(userId: string | null | undefined) {
-  if (!supabase || !userId) {
+  if (!userId) {
     return "free" as const;
   }
 
   try {
+    const supabase = createClient();
     const { data, error } = await supabase
-      .from("profiles")
-      .select("plan, pro_until")
+      .from("user_profiles")
+      .select("plan, is_pro, pro_expires_at")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -45,16 +46,11 @@ async function getUserPlan(userId: string | null | undefined) {
       return "free" as const;
     }
 
-    // Optional: if pro_until exists and is in the past, treat as free again
-    if (data.pro_until) {
-      const now = new Date();
-      const until = new Date(data.pro_until);
-      if (until.getTime() < now.getTime()) {
-        return "free" as const;
-      }
-    }
+    const isPro =
+      data.is_pro === true ||
+      String(data.plan).toLowerCase() === "pro";
 
-    return (data.plan === "pro" ? "pro" : "free") as const;
+    return isPro ? "pro" : "free";
   } catch {
     return "free" as const;
   }

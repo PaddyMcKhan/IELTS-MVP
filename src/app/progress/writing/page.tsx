@@ -39,6 +39,10 @@ const criterionLabels: Record<CriterionKey, string> = {
   grammar: "Grammar range & accuracy",
 };
 
+function isCriterionKey(v: unknown): v is CriterionKey {
+  return typeof v === "string" && v in criterionLabels;
+}
+
 export default function ProgressPage() {
   const { session, supabase } = useSupabaseSession();
   const userId = (session?.user as any)?.id ?? null;
@@ -250,16 +254,24 @@ export default function ProgressPage() {
   }, [sortedAttempts]);
 
   // Pro-only insights layer
-  const insights = useMemo(() => {
+  type Insights =
+    | { hasEnoughData: false }
+    | {
+      hasEnoughData: true;
+      weakestKey: CriterionKey | null;
+      weakestAvg: number | null;
+      weightedBand: number | null;
+      predictedExamBand: number | null;
+    };
+
+  const insights = useMemo<Insights>(() => {
     if (!progressSummary || !sortedAttempts.length) {
-      return null;
+      return { hasEnoughData: false };
     }
 
     // Require at least 3 scored attempts to show strong insights
     if (progressSummary.scoredAttempts < 3) {
-      return {
-        hasEnoughData: false,
-      } as const;
+      return { hasEnoughData: false };
     }
 
     // 1) Weakest criterion
@@ -291,27 +303,20 @@ export default function ProgressPage() {
       totalWeight += weight;
     }
 
-    const weightedBand =
-      totalWeight > 0 ? weightedSum / totalWeight : null;
+    const weightedBand = totalWeight > 0 ? weightedSum / totalWeight : null;
 
-    // 3) Predicted real exam band:
-    //    - Take last 5 scored attempts' overall
-    //    - Average them
-    //    - Apply a small "exam realism" adjustment (-0.25 and round to nearest 0.5)
+    // 3) Predicted real exam band (last 5 scored, -0.25 realism penalty, round to 0.5)
     const lastScored: number[] = [];
     for (const attempt of sortedAttempts) {
       const overall = (attempt as any)?.score_json?.overall;
-      if (typeof overall === "number") {
-        lastScored.push(overall);
-      }
+      if (typeof overall === "number") lastScored.push(overall);
       if (lastScored.length >= 5) break;
     }
 
     let predictedExamBand: number | null = null;
     if (lastScored.length > 0) {
-      const avg =
-        lastScored.reduce((sum, v) => sum + v, 0) / lastScored.length;
-      const adjusted = avg - 0.25; // small realism penalty
+      const avg = lastScored.reduce((sum, v) => sum + v, 0) / lastScored.length;
+      const adjusted = avg - 0.25;
       const rounded = Math.round(adjusted * 2) / 2;
       predictedExamBand = Math.max(0, Math.min(9, rounded));
     }
@@ -322,7 +327,7 @@ export default function ProgressPage() {
       weakestAvg: weakestKey ? weakestAvg : null,
       weightedBand,
       predictedExamBand,
-    } as const;
+    };
   }, [progressSummary, sortedAttempts, criterionSummary]);
 
   // Not logged in state
@@ -677,7 +682,9 @@ export default function ProgressPage() {
                           Highlighted weak area
                         </p>
                         <p className="font-semibold">
-                          {criterionLabels[insights.weakestKey]}{" "}
+                          {isCriterionKey(insights.weakestKey)
+                            ? criterionLabels[insights.weakestKey]
+                            : "Weakest area"}{" "}
                           {insights.weakestAvg !== null &&
                             `(avg ${
                               Math.round(

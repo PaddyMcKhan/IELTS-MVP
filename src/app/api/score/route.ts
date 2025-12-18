@@ -119,6 +119,7 @@ export async function POST(req: Request) {
     const {
       essay,
       task,
+      mode = "academic",
       wordCount,
       question,
       questionId,
@@ -168,13 +169,15 @@ export async function POST(req: Request) {
       "Unknown IELTS Writing prompt.";
 
     const canonicalMinWords =
-      typeof dbTask?.min_words === "number"
-        ? dbTask.min_words
-        : typeof clientMinWords === "number"
-        ? clientMinWords
-        : task === "task1"
-        ? 150
-        : 250;
+  typeof dbTask?.min_words === "number"
+    ? dbTask.min_words
+    : typeof clientMinWords === "number"
+    ? clientMinWords
+    : task === "task1"
+    ? 150
+    : 250;
+
+const canonicalTaskType = taskType ?? task ?? "unknown";
 
     /* ---------- HARD FAIL: NO CONTENT ---------- */
     const sig = detectNoContent(essay, canonicalPrompt);
@@ -216,6 +219,8 @@ export async function POST(req: Request) {
 
     /* ---------- AI SCORING ---------- */
     const model = pickModel(isProRequested);
+    const moduleLabel = mode === "academic" ? "Academic" : "General";
+    const taskNumber = task === "task1" ? 1 : 2;
 
     const prompt = `
 You are a Senior IELTS Writing Examiner with more than 15 years of professional experience.

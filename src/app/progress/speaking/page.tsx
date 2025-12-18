@@ -35,6 +35,10 @@ const criterionLabels: Record<CriterionKey, string> = {
   pronunciation: "Pronunciation",
 };
 
+function isCriterionKey(v: unknown): v is CriterionKey {
+  return typeof v === "string" && v in criterionLabels;
+}
+
 function parsePartFromQuestionId(questionId?: string | null): PartKey | null {
   // expects "p1-1" / "p2-3" / "p3-9"
   if (!questionId) return null;
@@ -272,74 +276,86 @@ export default function SpeakingProgressPage() {
       .map(([label, count]) => ({ label, count }));
   }, [sortedAttempts]);
 
-  // Pro-only insights (matches Writing Progress “shape”)
-  const insights = useMemo(() => {
-    if (!progressSummary || !sortedAttempts.length) return null;
+// Pro-only insights (matches Writing Progress “shape”)
+type Insights =
+  | { hasEnoughData: false }
+  | {
+      hasEnoughData: true;
+      weakestKey: CriterionKey | null;
+      weakestAvg: number | null;
+      weightedBand: number | null;
+      predictedExamBand: number | null;
+    };
 
-    if (progressSummary.scoredAttempts < 3) {
-      return { hasEnoughData: false } as const;
+const insights = useMemo<Insights>(() => {
+  if (!progressSummary || !sortedAttempts.length) {
+    return { hasEnoughData: false };
+  }
+
+  if (progressSummary.scoredAttempts < 3) {
+    return { hasEnoughData: false };
+  }
+
+  // 1) Weakest criterion
+  let weakestKey: CriterionKey | null = null;
+  let weakestAvg = Infinity;
+
+  (Object.keys(criterionSummary) as CriterionKey[]).forEach((k) => {
+    const avg = criterionSummary[k].average;
+    if (avg === null) return;
+    if (avg < weakestAvg) {
+      weakestAvg = avg;
+      weakestKey = k;
     }
+  });
 
-    // 1) Weakest criterion
-    let weakestKey: CriterionKey | null = null;
-    let weakestAvg = Infinity;
+  // 2) Difficulty-weighted band (Speaking: Part 2/3 weighted higher)
+  let weightedSum = 0;
+  let totalWeight = 0;
 
-    (Object.keys(criterionSummary) as CriterionKey[]).forEach((k) => {
-      const avg = criterionSummary[k].average;
-      if (avg === null) return;
-      if (avg < weakestAvg) {
-        weakestAvg = avg;
-        weakestKey = k;
-      }
-    });
+  for (const att of sortedAttempts) {
+    const overall = getOverall(att);
+    if (typeof overall !== "number") continue;
 
-    // 2) Difficulty-weighted band (Speaking: Part 2/3 weighted higher)
-    let weightedSum = 0;
-    let totalWeight = 0;
+    const partKey =
+      (att.part as PartKey | null) ??
+      parsePartFromQuestionId(att.question_id) ??
+      null;
 
-    for (const att of sortedAttempts) {
-      const overall = getOverall(att);
-      if (typeof overall !== "number") continue;
+    let weight = 1;
+    if (partKey === "part2") weight += 0.2;
+    if (partKey === "part3") weight += 0.3;
 
-      const partKey =
-        (att.part as PartKey | null) ??
-        parsePartFromQuestionId(att.question_id) ??
-        null;
+    weightedSum += overall * weight;
+    totalWeight += weight;
+  }
 
-      let weight = 1;
-      if (partKey === "part2") weight += 0.2;
-      if (partKey === "part3") weight += 0.3;
+  const weightedBand = totalWeight > 0 ? weightedSum / totalWeight : null;
 
-      weightedSum += overall * weight;
-      totalWeight += weight;
-    }
+  // 3) Predicted exam-day band (last 5 scored, small realism penalty, rounded to 0.5)
+  const lastScored: number[] = [];
+  for (const att of sortedAttempts) {
+    const overall = getOverall(att);
+    if (typeof overall === "number") lastScored.push(overall);
+    if (lastScored.length >= 5) break;
+  }
 
-    const weightedBand = totalWeight > 0 ? weightedSum / totalWeight : null;
+  let predictedExamBand: number | null = null;
+  if (lastScored.length > 0) {
+    const avg = lastScored.reduce((s, v) => s + v, 0) / lastScored.length;
+    const adjusted = avg - 0.25;
+    const rounded = Math.round(adjusted * 2) / 2;
+    predictedExamBand = Math.max(0, Math.min(9, rounded));
+  }
 
-    // 3) Predicted exam-day band (last 5 scored, small realism penalty, rounded to 0.5)
-    const lastScored: number[] = [];
-    for (const att of sortedAttempts) {
-      const overall = getOverall(att);
-      if (typeof overall === "number") lastScored.push(overall);
-      if (lastScored.length >= 5) break;
-    }
-
-    let predictedExamBand: number | null = null;
-    if (lastScored.length > 0) {
-      const avg = lastScored.reduce((s, v) => s + v, 0) / lastScored.length;
-      const adjusted = avg - 0.25;
-      const rounded = Math.round(adjusted * 2) / 2;
-      predictedExamBand = Math.max(0, Math.min(9, rounded));
-    }
-
-    return {
-      hasEnoughData: true,
-      weakestKey,
-      weakestAvg: weakestKey ? weakestAvg : null,
-      weightedBand,
-      predictedExamBand,
-    } as const;
-  }, [progressSummary, sortedAttempts, criterionSummary]);
+  return {
+    hasEnoughData: true,
+    weakestKey,
+    weakestAvg: weakestKey ? weakestAvg : null,
+    weightedBand,
+    predictedExamBand,
+  };
+}, [progressSummary, sortedAttempts, criterionSummary]);
 
     // Mini “chart” (simple bars) — no libs, no drama
   const chartPoints = useMemo(() => {
@@ -718,7 +734,9 @@ export default function SpeakingProgressPage() {
                           Highlighted weak area
                         </p>
                         <p className="mt-1 font-semibold text-slate-800">
-                          {criterionLabels[insights.weakestKey]}{" "}
+                          {isCriterionKey(insights.weakestKey)
+                            ? criterionLabels[insights.weakestKey]
+                            : "Weakest area"}{" "}
                           {typeof insights.weakestAvg === "number"
                             ? `(avg ${insights.weakestAvg.toFixed(1)})`
                             : ""}

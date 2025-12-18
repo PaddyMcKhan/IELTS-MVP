@@ -1,196 +1,109 @@
-// src/app/api/speaking/attempts/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@/utils/supabase/server";
 
-// Supabase setup (MATCHES writing /api/attempts)
-const supabaseUrl =
-  process.env.NEXT_PUBLIC_SUPABASE_URL ??
-  process.env.SUPABASE_URL ??
-  "";
+type Plan = "pro" | "free";
+type Part = "part1" | "part2" | "part3" | "unknown";
 
-const supabaseKey =
-  process.env.SUPABASE_SERVICE_ROLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
-  process.env.SUPABASE_ANON_KEY ??
-  "";
-
-const supabase =
-  supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
-
-// Plan check (MATCHES latest writing /api/score)
-async function getUserPlan(userId: string | null | undefined) {
-  if (!supabase || !userId) return "free" as const;
-
-  try {
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("plan, pro_until")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (error || !data) return "free" as const;
-
-    if (data.pro_until) {
-      const now = new Date();
-      const until = new Date(data.pro_until);
-      if (until.getTime() < now.getTime()) return "free" as const;
-    }
-
-    return (data.plan === "pro" ? "pro" : "free") as const;
-  } catch {
-    return "free" as const;
-  }
-}
-
-function safePart(v: unknown): "part1" | "part2" | "part3" | "unknown" {
+function safePart(v: unknown): Part {
   return v === "part1" || v === "part2" || v === "part3" ? v : "unknown";
 }
 
-// POST /api/speaking/attempts  (SAVE)
-export async function POST(req: NextRequest) {
+async function fetchPlan(userId?: string): Promise<Plan> {
+  if (!userId) return "free";
+
   try {
-    if (!supabase) {
-      return NextResponse.json(
-        { error: "Supabase is not configured (missing env vars)" },
-        { status: 500 }
-      );
-    }
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("user_profiles")
+      .select("plan")
+      .eq("user_id", userId)
+      .maybeSingle();
 
-    const body = await req.json();
-
-    const {
-      userId,
-      part,
-      duration_seconds,
-      transcript,
-      question_id,
-      speaking_question_id,
-      question_prompt,
-      score_json,
-      overall_band,
-      model,
-      isPro,
-      audio_path,
-      notes,
-    } = body ?? {};
-
-    if (!userId || typeof userId !== "string") {
-      return NextResponse.json({ error: "Missing userId" }, { status: 400 });
-    }
-
-    const plan = await getUserPlan(userId);
-    const wantsPro = !!isPro;
-
-    // 🔐 strict guard: can't save a Pro attempt for a free user
-    if (wantsPro && plan !== "pro") {
-      return NextResponse.json(
-        { error: "Cannot save Pro attempt for a Free user.", plan },
-        { status: 403 }
-      );
-    }
-
-    const safeTranscript = typeof transcript === "string" ? transcript.trim() : "";
-    if (!safeTranscript) {
-      return NextResponse.json({ error: "Missing transcript" }, { status: 400 });
-    }
-
-    const p = safePart(part);
-
-    const derivedOverall =
-      typeof overall_band === "number"
-        ? overall_band
-        : score_json && typeof score_json === "object" && typeof score_json.overall_band === "number"
-        ? score_json.overall_band
-        : null;
-
-    const payload: any = {
-      user_id: userId,
-      part: p,
-      duration_seconds: typeof duration_seconds === "number" ? duration_seconds : null,
-      transcript: safeTranscript,
-
-      // keep BOTH optional ids
-      question_id: typeof question_id === "string" ? question_id : null,
-      speaking_question_id:
-        typeof speaking_question_id === "string" ? speaking_question_id : null,
-
-      question_prompt: typeof question_prompt === "string" ? question_prompt : null,
-
-      // scores
-      overall_band: derivedOverall,            // your table currently stores as text; supabase will coerce if needed
-      score_json: score_json ?? null,          // your table currently stores as text/json string; supabase will store whatever column type is
-      model: typeof model === "string" ? model : null,
-
-      // denormalized snapshot flags (truth remains in profiles)
-      plan,
-      is_pro: wantsPro && plan === "pro",
-
-      audio_path: typeof audio_path === "string" ? audio_path : "inline-openai",
-      notes: typeof notes === "string" ? notes : null,
-    };
-
-    const { data, error } = await supabase
-      .from("speaking_attempts")
-      .insert(payload)
-      .select()
-      .single();
-
-    if (error) {
-      console.error("Supabase save error:", error);
-      return NextResponse.json(
-        { error: error.message ?? "Supabase error" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ ok: true, attempt: data });
-  } catch (err: any) {
-    console.error("Unexpected error in POST /api/speaking/attempts:", err);
-    return NextResponse.json(
-      { ok: false, error: "Unexpected error", details: err?.message ?? String(err) },
-      { status: 500 }
-    );
+    return data?.plan === "pro" ? "pro" : "free";
+  } catch {
+    return "free";
   }
 }
 
-// GET /api/speaking/attempts?userId=...
+/* =========================
+   GET /api/speaking/attempts
+   ========================= */
 export async function GET(req: NextRequest) {
-  try {
-    if (!supabase) {
-      return NextResponse.json(
-        { error: "Supabase is not configured (missing env vars)" },
-        { status: 500 }
-      );
-    }
+  const supabase = createClient();
 
-    const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    if (!userId) {
-      return NextResponse.json({ attempts: [] });
-    }
+  const { searchParams } = new URL(req.url);
+  const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 50), 1), 200);
 
-    const { data, error } = await supabase
-      .from("speaking_attempts")
-      .select("*")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false });
+  const plan = await fetchPlan(user?.id);
 
-    if (error) {
-      console.error("Error loading speaking attempts:", error);
-      return NextResponse.json(
-        { error: "Failed to load speaking attempts" },
-        { status: 500 }
-      );
-    }
+  const { data, error } = await supabase
+    .from("speaking_attempts")
+    .select(
+      "id,user_id,part,question_id,duration_seconds,audio_path,transcript,notes,created_at,model,overall_band,score_json"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
 
-    return NextResponse.json({ attempts: data ?? [] });
-  } catch (err: any) {
-    console.error("Unexpected error in GET /api/speaking/attempts:", err);
-    return NextResponse.json(
-      { error: "Unexpected error", details: err?.message ?? String(err) },
-      { status: 500 }
-    );
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
+
+  const attempts = (data ?? []).map((row: any) => ({
+    ...row,
+    part: safePart(row.part),
+  }));
+
+  return NextResponse.json({ plan, attempts });
+}
+
+/* =========================
+   POST /api/speaking/attempts
+   ========================= */
+export async function POST(req: NextRequest) {
+  const supabase = createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  }
+
+  const body = await req.json();
+
+  const {
+    part,
+    questionId,
+    durationSeconds,
+    audioPath,
+    transcript,
+    notes,
+    model,
+    overallBand,
+    scoreJson,
+  } = body;
+
+  const { error } = await supabase.from("speaking_attempts").insert({
+    user_id: user.id,
+    part: safePart(part),
+    question_id: questionId,
+    duration_seconds: durationSeconds,
+    audio_path: audioPath,
+    transcript,
+    notes,
+    model,
+    overall_band: overallBand,
+    score_json: scoreJson,
+  });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
 }
