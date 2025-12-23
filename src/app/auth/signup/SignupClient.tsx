@@ -34,14 +34,11 @@ export default function SignupClient() {
       return;
     }
 
-    // If you have email confirmation ON, data.session will be null.
-    // If confirmations OFF, user is already logged in here.
     if (invite) {
       try {
         await supabase.rpc("redeem_invite_code", { invite_code: invite });
       } catch (e) {
         console.error("Invite redeem error:", e);
-        // Non-fatal: signup still succeeded.
       }
     }
 
@@ -51,16 +48,8 @@ export default function SignupClient() {
       );
     } else {
       // Email confirmations OFF → user is already logged in
-      window.location.href = "/";
+      window.location.href = "/apps";
     }
-  };
-
-  const handleGoogle = async () => {
-    setError("");
-    setInfo("");
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-    });
   };
 
   return (
@@ -70,8 +59,8 @@ export default function SignupClient() {
       {invite && (
         <p className="text-xs text-emerald-600">
           Signing up with invite code{" "}
-          <code className="px-1 py-0.5 rounded bg-emerald-50">{invite}</code>. You&apos;ll get 7 days of Pro,
-          and your friend earns 30 days.
+          <code className="px-1 py-0.5 rounded bg-emerald-50">{invite}</code>. You&apos;ll get 7 days of
+          Pro, and your friend earns 30 days.
         </p>
       )}
 
@@ -82,22 +71,22 @@ export default function SignupClient() {
         type="email"
         placeholder="Email"
         className="w-full border p-2 rounded"
+        value={email}
         onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
       />
 
       <input
         type="password"
         placeholder="Password"
         className="w-full border p-2 rounded"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
+        autoComplete="new-password"
       />
 
       <Button className="w-full" onClick={handleSignup} disabled={loading}>
         {loading ? "Creating account..." : "Sign up"}
-      </Button>
-
-      <Button variant="outline" className="w-full" onClick={handleGoogle}>
-        Continue with Google
       </Button>
 
       <p className="text-sm text-slate-500">

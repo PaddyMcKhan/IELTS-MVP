@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // ✅ NEW: after sign-in, send users to the IELTS-Master Hub
+  // after sign-in, send users to the IELTS-Master Hub
   const NEXT_AFTER_LOGIN = "/apps";
 
   const handleLogin = async () => {
@@ -31,20 +31,7 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ On success, go to Hub
     window.location.href = NEXT_AFTER_LOGIN;
-  };
-
-  const handleGoogle = async () => {
-    setError("");
-    // This will only work once you enable Google in Supabase → Auth → Providers
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        // ✅ Ensure OAuth lands on Hub after auth completes
-        redirectTo: `${window.location.origin}${NEXT_AFTER_LOGIN}`,
-      },
-    });
   };
 
   return (
@@ -57,22 +44,22 @@ export default function LoginPage() {
         type="email"
         placeholder="Email"
         className="w-full border p-2 rounded"
+        value={email}
         onChange={(e) => setEmail(e.target.value)}
+        autoComplete="email"
       />
 
       <input
         type="password"
         placeholder="Password"
         className="w-full border p-2 rounded"
+        value={password}
         onChange={(e) => setPassword(e.target.value)}
+        autoComplete="current-password"
       />
 
       <Button className="w-full" onClick={handleLogin} disabled={loading}>
         {loading ? "Loading..." : "Sign in"}
-      </Button>
-
-      <Button variant="outline" className="w-full" onClick={handleGoogle}>
-        Continue with Google
       </Button>
 
       <p className="text-sm text-slate-500">
