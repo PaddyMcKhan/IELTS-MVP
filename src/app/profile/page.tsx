@@ -206,7 +206,7 @@ export default function ProfilePage() {
                       onClick={handleCopyInvite}
                       className="mt-1 text-xs underline text-emerald-400"
                     >
-                      Copy invite link
+                      Copy invite code
                     </button>
                   )}
 
