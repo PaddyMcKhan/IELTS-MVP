@@ -20,7 +20,16 @@ const supabase =
     ? createClient(supabaseUrl, supabaseKey)
     : null;
 
-export async function POST() {
+export async function POST(req: Request) {
+  // ✅ Hard lock: prevent public abuse
+  const secret = req.headers.get("x-admin-secret");
+  if (
+    !process.env.ADMIN_UPGRADE_SECRET ||
+    secret !== process.env.ADMIN_UPGRADE_SECRET
+  ) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   if (!supabase) {
     return NextResponse.json(
       { error: "Supabase not configured" },
