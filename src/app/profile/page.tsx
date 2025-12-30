@@ -40,9 +40,30 @@ export default function ProfilePage() {
         if (error) {
           console.error("Profile load error:", error);
           setErrorMessage("Failed to load your profile.");
-        } else {
-          setProfile(data as ProfileRow | null);
+          return;
         }
+
+        // ✅ If profile missing OR invite_code missing, ensure it exists via API
+        if (!data || !data.invite_code) {
+          const res = await fetch("/api/profile/save", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: session.user.id }),
+          });
+
+          const json = await res.json().catch(() => ({}));
+
+          if (!res.ok || json?.error || !json?.profile) {
+            console.error("Profile ensure error:", json?.error);
+            setErrorMessage("Failed to initialize your profile.");
+            return;
+          }
+
+          setProfile(json.profile as ProfileRow);
+          return;
+        }
+
+        setProfile(data as ProfileRow);
       } catch (err) {
         console.error("Unexpected error:", err);
         setErrorMessage("Unexpected error while loading profile.");
@@ -50,7 +71,6 @@ export default function ProfilePage() {
     }
 
     loadProfile();
-  }, [session, supabase]);
 
   const planLabel = (profile?.plan ?? "FREE").toLowerCase();
   const inviteCode = profile?.invite_code ?? null;
@@ -59,18 +79,17 @@ export default function ProfilePage() {
     : null;
 
   const handleCopyInvite = async () => {
-    if (!inviteCode) return;
-    try {
-      const url = `${window.location.origin}/auth/signup?invite=${inviteCode}`;
-      await navigator.clipboard.writeText(url);
-      setCopyStatus("Copied!");
-      setTimeout(() => setCopyStatus(""), 2000);
-    } catch (err) {
-      console.error("Clipboard error:", err);
-      setCopyStatus("Could not copy");
-      setTimeout(() => setCopyStatus(""), 2000);
-    }
-  };
+  if (!inviteCode) return;
+  try {
+    await navigator.clipboard.writeText(inviteCode);
+    setCopyStatus("Invite code copied!");
+    setTimeout(() => setCopyStatus(""), 2000);
+  } catch (err) {
+    console.error("Clipboard error:", err);
+    setCopyStatus("Could not copy");
+    setTimeout(() => setCopyStatus(""), 2000);
+  }
+};
 
   const handleRedeemInvite = async () => {
     if (!session?.user?.id) return;
