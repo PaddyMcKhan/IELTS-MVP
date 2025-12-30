@@ -29,6 +29,18 @@ function computeNewExpiry(existing: string | null, days: number) {
   return addDays(start, days).toISOString();
 }
 
+function isActivePro(profile: { is_pro?: boolean | null; pro_expires_at?: string | null }) {
+  if (!profile?.is_pro) return false;
+  if (!profile.pro_expires_at) return true; // null = lifetime
+  return new Date(profile.pro_expires_at) > new Date();
+}
+
+function isNewAccount(createdAt: string, hours: number) {
+  const created = new Date(createdAt);
+  const cutoffMs = hours * 60 * 60 * 1000;
+  return Date.now() - created.getTime() <= cutoffMs;
+}
+
 export async function POST(req: Request) {
   if (!supabase) {
     return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
@@ -79,10 +91,10 @@ export async function POST(req: Request) {
 
   // 3) Load invitee profile (must exist if /profile already works; but handle just in case)
   const { data: invitee, error: inviteeErr } = await supabase
-    .from("user_profiles")
-    .select("user_id, pro_expires_at, invited_by_user_id")
-    .eq("user_id", inviteeUserId)
-    .maybeSingle();
+  .from("user_profiles")
+  .select("user_id, pro_expires_at, invited_by_user_id, is_pro, plan, created_at")
+  .eq("user_id", inviteeUserId)
+  .maybeSingle();
 
   if (inviteeErr) {
     console.error("redeem-invite: invitee lookup error", inviteeErr);
@@ -91,6 +103,38 @@ export async function POST(req: Request) {
 
   if (!invitee?.user_id) {
     return NextResponse.json({ error: "Invitee profile not found" }, { status: 400 });
+  }
+
+  // ✅ Anti-abuse: only FREE, non-pro users can redeem
+  if (isActivePro(invitee)) {
+    return NextResponse.json(
+      { error: "Invite codes can only be redeemed by Free users." },
+      { status: 400 }
+    );
+  }
+
+  // ✅ Anti-abuse: only allow redemption shortly after signup (e.g. 24 hours)
+  if (!isNewAccount(invitee.created_at, 24)) {
+    return NextResponse.json(
+      { error: "Invite codes can only be redeemed within 24 hours of creating your account." },
+      { status: 400 }
+    );
+  }
+
+  // ✅ Anti-abuse: only one inviter per account, ever
+  if (invitee.invited_by_user_id) {
+    return NextResponse.json(
+      { error: "An invite code has already been applied to this account." },
+      { status: 400 }
+    );
+  }
+
+  // Optional: require plan to be FREE (handles weird states)
+  if (String(invitee.plan ?? "FREE").toUpperCase() !== "FREE") {
+    return NextResponse.json(
+      { error: "Invite codes can only be redeemed on Free accounts." },
+      { status: 400 }
+    );
   }
 
   // Optional extra guard: don't allow changing inviter once set
