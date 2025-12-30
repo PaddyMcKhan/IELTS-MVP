@@ -27,50 +27,60 @@ export default function ProfilePage() {
   const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.user?.id || !supabase) return;
+  if (!session?.user?.id) return;
 
-    async function loadProfile() {
-      try {
-        const { data, error } = await supabase
-          .from("user_profiles")
-          .select("*")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
+  let cancelled = false;
 
-        if (error) {
-          console.error("Profile load error:", error);
-          setErrorMessage("Failed to load your profile.");
-          return;
-        }
+  async function loadProfile() {
+    try {
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
 
-        // ✅ If profile missing OR invite_code missing, ensure it exists via API
-        if (!data || !data.invite_code) {
-          const res = await fetch("/api/profile/save", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ userId: session.user.id }),
-          });
+      if (cancelled) return;
 
-          const json = await res.json().catch(() => ({}));
-
-          if (!res.ok || json?.error || !json?.profile) {
-            console.error("Profile ensure error:", json?.error);
-            setErrorMessage("Failed to initialize your profile.");
-            return;
-          }
-
-          setProfile(json.profile as ProfileRow);
-          return;
-        }
-
-        setProfile(data as ProfileRow);
-      } catch (err) {
-        console.error("Unexpected error:", err);
-        setErrorMessage("Unexpected error while loading profile.");
+      if (error) {
+        console.error("Profile load error:", error);
+        setErrorMessage("Failed to load your profile.");
+        return;
       }
-    }
 
-    loadProfile();
+      // ✅ If profile missing OR invite_code missing, ensure it exists via API
+      if (!data || !data.invite_code) {
+        const res = await fetch("/api/profile/save", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: session.user.id }),
+        });
+
+        const json = await res.json().catch(() => ({}));
+
+        if (!res.ok || json?.error || !json?.profile) {
+          console.error("Profile ensure error:", json?.error);
+          setErrorMessage("Failed to initialize your profile.");
+          return;
+        }
+
+        setProfile(json.profile as ProfileRow);
+        return;
+      }
+
+      setProfile(data as ProfileRow);
+    } catch (err) {
+      if (cancelled) return;
+      console.error("Unexpected error:", err);
+      setErrorMessage("Unexpected error while loading profile.");
+    }
+  }
+
+  loadProfile();
+
+  return () => {
+    cancelled = true;
+  };
+}, [session, supabase]);
 
   const planLabel = (profile?.plan ?? "FREE").toLowerCase();
   const inviteCode = profile?.invite_code ?? null;
