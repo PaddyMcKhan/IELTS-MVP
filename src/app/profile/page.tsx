@@ -21,6 +21,11 @@ export default function ProfilePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [copyStatus, setCopyStatus] = useState<string>("");
 
+  const [redeemCode, setRedeemCode] = useState("");
+  const [redeemLoading, setRedeemLoading] = useState(false);
+  const [redeemError, setRedeemError] = useState<string | null>(null);
+  const [redeemSuccess, setRedeemSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     if (!session?.user?.id || !supabase) return;
 
@@ -47,7 +52,7 @@ export default function ProfilePage() {
     loadProfile();
   }, [session, supabase]);
 
-  const planLabel = profile?.plan ?? "free";
+  const planLabel = (profile?.plan ?? "FREE").toLowerCase();
   const inviteCode = profile?.invite_code ?? null;
   const proExpiresLabel = profile?.pro_expires_at
     ? new Date(profile.pro_expires_at).toLocaleDateString()
@@ -64,6 +69,51 @@ export default function ProfilePage() {
       console.error("Clipboard error:", err);
       setCopyStatus("Could not copy");
       setTimeout(() => setCopyStatus(""), 2000);
+    }
+  };
+
+  const handleRedeemInvite = async () => {
+    if (!session?.user?.id) return;
+    if (!redeemCode.trim()) return;
+
+    setRedeemLoading(true);
+    setRedeemError(null);
+    setRedeemSuccess(null);
+
+    try {
+      const res = await fetch("/api/profile/redeem-invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inviteCode: redeemCode.trim(),
+          userId: session.user.id,
+        }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setRedeemError(json.error || "Failed to redeem invite code.");
+        return;
+      }
+
+      setRedeemSuccess("Invite redeemed! Pro time added.");
+      setRedeemCode("");
+
+      // Refresh profile from Supabase so plan/expiry updates show
+      // (simple approach: reload via same query)
+      const { data, error } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
+
+      if (!error) setProfile(data as ProfileRow | null);
+    } catch (err) {
+      console.error("Redeem invite error:", err);
+      setRedeemError("Failed to redeem invite code.");
+    } finally {
+      setRedeemLoading(false);
     }
   };
 
@@ -143,6 +193,39 @@ export default function ProfilePage() {
                       unlock Pro scoring and extra features for friends — and
                       earn upgrades for yourself.
                     </p>
+                  )}
+                </div>
+
+                <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950 p-3">
+                  <div className="text-xs font-medium text-slate-200">Redeem invite code</div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Enter a friend’s code to unlock Pro time (7 days for you, 30 days for them).
+                  </p>
+
+                  <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                    <input
+                      type="text"
+                      value={redeemCode}
+                      onChange={(e) => setRedeemCode(e.target.value)}
+                      placeholder="e.g. IELTS-D37B-B456"
+                      className="w-full rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100 placeholder:text-slate-500"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={handleRedeemInvite}
+                      disabled={redeemLoading || !redeemCode.trim()}
+                      className="rounded-md bg-emerald-500 px-4 py-2 text-xs font-semibold text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {redeemLoading ? "Redeeming…" : "Redeem"}
+                    </button>
+                  </div>
+
+                  {redeemError && (
+                    <p className="mt-2 text-xs text-red-400">{redeemError}</p>
+                  )}
+                  {redeemSuccess && (
+                    <p className="mt-2 text-xs text-emerald-300">{redeemSuccess}</p>
                   )}
                 </div>
 

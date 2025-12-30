@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   try {
     // For MVP: upgrade the most recently created profile row
     const { data: latest, error: fetchError } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("*")
       .order("created_at", { ascending: false })
       .limit(1)
@@ -64,12 +64,11 @@ export async function POST(req: Request) {
     const nowIso = new Date().toISOString();
 
     const { data: updated, error: updateError } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .update({
-        plan: "pro",
-        pro_since: nowIso,
-        pro_until: null,
-        upgrade_reason: "manual",
+        plan: "PRO",
+        is_pro: true,
+        pro_expires_at: null,
       })
       .eq("user_id", latest.user_id)
       .select("*")

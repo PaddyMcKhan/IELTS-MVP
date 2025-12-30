@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   // 1) Try to load existing profile
   const { data, error } = await supabase
-    .from("profiles")
+    .from("user_profiles")
     .select("*")
     .eq("user_id", userId)
     .maybeSingle();
@@ -65,11 +65,15 @@ export async function POST(req: NextRequest) {
   const inviteCode = generateInviteCode(userId);
 
   const { data: inserted, error: insertError } = await supabase
-    .from("profiles")
+    .from("user_profiles")
     .insert({
-      user_id: userId,
-      plan: "free",
-      invite_code: inviteCode,
+      id: userId,               // ✅ matches your table: id is uuid
+      user_id: userId,          // ✅ also stored
+      plan: "FREE",             // ✅ match your enum style
+      is_pro: false,            // ✅ match your boolean
+      invite_code: inviteCode,  // ✅ your column name
+      referral_count: 0,        // ✅ your column exists
+      pro_expires_at: null,     // ✅ starts null
     })
     .select("*")
     .single();
