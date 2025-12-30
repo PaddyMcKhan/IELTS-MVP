@@ -40,6 +40,7 @@ export async function POST(req: NextRequest) {
   }
 
   const userId = String(body.userId);
+  const displayName = body?.displayName ? String(body.displayName) : null;
 
   // 1) Try to load existing profile
   const { data, error } = await supabase
@@ -57,9 +58,32 @@ export async function POST(req: NextRequest) {
   }
 
   if (data) {
-    // Already exists — return it
-    return NextResponse.json({ profile: data });
+  // ✅ If profile exists but invite_code is missing, repair it
+  if (!data.invite_code) {
+    const inviteCode = generateInviteCode(userId);
+
+    const patch: any = { invite_code: inviteCode };
+    if (displayName) patch.display_name = displayName;
+
+    const { data: updated, error: updateError } = await supabase
+      .from("user_profiles")
+      .update(patch)
+      .eq("user_id", userId)
+      .select("*")
+      .single();
+
+    if (updateError) {
+      console.error("Error repairing invite_code:", updateError);
+      // fall back to existing profile if repair fails
+      return NextResponse.json({ profile: data });
+    }
+
+    return NextResponse.json({ profile: updated });
   }
+
+  // ✅ Profile exists and is already valid
+  return NextResponse.json({ profile: data });
+}
 
   // 2) Create a default profile
   const inviteCode = generateInviteCode(userId);
@@ -67,13 +91,14 @@ export async function POST(req: NextRequest) {
   const { data: inserted, error: insertError } = await supabase
     .from("user_profiles")
     .insert({
-      id: userId,               // ✅ matches your table: id is uuid
-      user_id: userId,          // ✅ also stored
-      plan: "FREE",             // ✅ match your enum style
-      is_pro: false,            // ✅ match your boolean
-      invite_code: inviteCode,  // ✅ your column name
-      referral_count: 0,        // ✅ your column exists
-      pro_expires_at: null,     // ✅ starts null
+      id: userId,                // ✅ matches your table: id is uuid
+      user_id: userId,           // ✅ also stored
+      display_name: displayName, // ✅ NEW: store email / display name
+      plan: "FREE",              // ✅ match your enum style
+      is_pro: false,             // ✅ match your boolean
+      invite_code: inviteCode,   // ✅ your column name
+      referral_count: 0,         // ✅ your column exists
+      pro_expires_at: null,      // ✅ starts null
     })
     .select("*")
     .single();
