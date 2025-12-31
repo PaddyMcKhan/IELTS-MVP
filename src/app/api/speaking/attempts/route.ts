@@ -29,35 +29,40 @@ async function fetchPlan(userId?: string): Promise<Plan> {
    GET /api/speaking/attempts
    ========================= */
 export async function GET(req: NextRequest) {
-  const supabase = createClient();
+  try {
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    // 🔒 HARD GATE
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-  const { searchParams } = new URL(req.url);
-  const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 50), 1), 200);
+    const { data, error } = await supabase
+      .from("speaking_attempts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
-  const plan = await fetchPlan(user?.id);
+    if (error) {
+      console.error("Error loading speaking attempts:", error);
+      return NextResponse.json(
+        { error: "Failed to load attempts" },
+        { status: 500 }
+      );
+    }
 
-  const { data, error } = await supabase
-    .from("speaking_attempts")
-    .select(
-      "id,user_id,part,question_id,duration_seconds,audio_path,transcript,notes,created_at,model,overall_band,score_json"
-    )
-    .order("created_at", { ascending: false })
-    .limit(limit);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ attempts: data ?? [] });
+  } catch (err) {
+    console.error("Unexpected error in GET /api/speaking/attempts:", err);
+    return NextResponse.json(
+      { error: "Unexpected error" },
+      { status: 500 }
+    );
   }
-
-  const attempts = (data ?? []).map((row: any) => ({
-    ...row,
-    part: safePart(row.part),
-  }));
-
-  return NextResponse.json({ plan, attempts });
 }
 
 /* =========================

@@ -1,3 +1,5 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -24,6 +26,15 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+
+    // 🔒 AUTH GUARD (POST)
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { ok: false, error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
     const {
       questionId,
@@ -70,7 +81,7 @@ export async function POST(req: NextRequest) {
       task: task ?? null,
       question_id: questionId ?? null,
       question_text: questionText ?? null,
-      user_id: userId ?? null,
+      user_id: session.user.id,
       word_count:
         typeof wordCount === "number" ? wordCount : null,
 
@@ -110,16 +121,19 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get("userId");
 
-    let query = supabase
-      .from("essay_attempts")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (userId) {
-      query = query.eq("user_id", userId);
+    // 🔒 HARD GATE: userId is REQUIRED
+    if (!userId) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
     }
 
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from("essay_attempts")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error loading attempts:", error);
@@ -138,3 +152,4 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
