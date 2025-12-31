@@ -110,7 +110,8 @@ export default function SpeakingAttemptsPage() {
     }
   }
 
-  useEffect(() => {
+    useEffect(() => {
+    if (!userId) return;
     loadAttempts();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
@@ -203,6 +204,38 @@ export default function SpeakingAttemptsPage() {
                   rawPrompt.length > 90 ? `${rawPrompt.slice(0, 90)}…` : rawPrompt;
 
                 const duration = typeof a.duration_seconds === "number" ? `${a.duration_seconds}s` : null;
+
+                // Not logged in state (match Progress pages)
+                if (!session) {
+                  return (
+                    <main className="min-h-dvh bg-white text-slate-900">
+                      <div className="mx-auto max-w-3xl space-y-6 p-6">
+                        <header className="flex items-center justify-between">
+                          <div>
+                            <h1 className="text-2xl font-semibold">Speaking Attempts</h1>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Sign in to see your attempt history.
+                            </p>
+                          </div>
+                        </header>
+
+                        <Card className="space-y-4 p-6">
+                          <p className="text-sm text-slate-600">
+                            You need to be logged in to view your speaking attempts.
+                          </p>
+                          <div className="flex gap-3">
+                            <Button asChild>
+                              <Link href="/auth/login">Sign in</Link>
+                            </Button>
+                            <Button variant="outline" asChild>
+                              <Link href="/speaking/practice">Back to practice</Link>
+                            </Button>
+                          </div>
+                        </Card>
+                      </div>
+                    </main>
+                  );
+                }
 
                 return (
                   <li key={a.id} className="hover:bg-slate-50">
